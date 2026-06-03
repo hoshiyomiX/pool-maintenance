@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pool Maintenance</string>
+    <string name="tab_villa">Villa</string>
+    <string name="tab_map">Denah</string>
+    <string name="tab_stats">Statistik</string>
+    <string name="villa_title">Villa %1$d</string>
+    <string name="no_data">Belum ada data</string>
+    <string name="no_data_period">Tidak ada data untuk periode ini</string>
+    <string name="map_placeholder">Denah akan datang</string>
+    <string name="filter_weekly">Mingguan</string>
+    <string name="filter_monthly">Bulanan</string>
+    <string name="filter_yearly">Tahunan</string>
+    <string name="obat_label">Obat</string>
+    <string name="hcl_label">HCL</string>
+    <string name="check_label">Pengecekan</string>
+    <string name="add_record">Tambah Catatan</string>
+    <string name="save">Simpan</string>
+    <string name="cancel">Batal</string>
+</resources>
