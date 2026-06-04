@@ -23,6 +23,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Generate Gradle wrapper
+        run: gradle wrapper --gradle-version 8.11.1
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
@@ -34,11 +37,13 @@ jobs:
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
 
       - name: Build info
+        if: success()
         run: |
           echo "Build completed successfully!"
           echo "APK: app/build/outputs/apk/debug/app-debug.apk"
