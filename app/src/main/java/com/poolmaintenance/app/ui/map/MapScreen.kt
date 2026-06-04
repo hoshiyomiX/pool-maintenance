@@ -34,14 +34,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,8 +66,6 @@ import java.util.Locale
 private val CELL_WIDTH = 52.dp
 private val CELL_SPACING = 3.dp
 private val SLOT_WIDTH = CELL_WIDTH + CELL_SPACING
-
-private val SCHEDULE_TABS = listOf("Monitoring", "Trt. Mingguan", "Deep Trt.")
 
 @Composable
 fun MapScreen(
@@ -261,7 +256,7 @@ fun LegendSection() {
     }
 }
 
-// ========== Schedule Dialog with 3 tab types ==========
+// ========== Schedule Dialog — 3 type buttons instead of TabRow ==========
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -273,8 +268,8 @@ fun ScheduleDialog(
     onSchedule: (Int, Long, String, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, String) -> Unit,
     onDeleteRecord: (Long) -> Unit
 ) {
-    var showAddForm by remember { mutableStateOf(false) }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    // null = no form shown; non-null = schedule type selected
+    var selectedScheduleType by remember { mutableStateOf<String?>(null) }
     // Monitoring fields
     var granularInput by remember { mutableStateOf("") }
     var tabletInput by remember { mutableStateOf("") }
@@ -294,6 +289,11 @@ fun ScheduleDialog(
     var showDatePicker by remember { mutableStateOf(false) }
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")) }
 
+    // Schedule type button colors
+    val monitoringColor = Color(0xFF1565C0)
+    val treatmentColor = Color(0xFF6A1B9A)
+    val deepColor = Color(0xFFBF360C)
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -310,41 +310,43 @@ fun ScheduleDialog(
                 }
             } else {
                 Column {
-                    if (showAddForm) {
+                    if (selectedScheduleType != null) {
+                        // ---- Schedule form for the selected type ----
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
-                                Text(
-                                    text = "Jadwalkan Maintenance",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                // Type badge at top
+                                val typeColor = when (selectedScheduleType) {
+                                    ScheduleType.MONITORING -> monitoringColor
+                                    ScheduleType.TREATMENT_MINGGUAN -> treatmentColor
+                                    else -> deepColor
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = typeColor.copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        text = selectedScheduleType!!,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = typeColor,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                // DATE PICKER — moved to the top
+                                // DATE PICKER at the top of the form
                                 TextButton(onClick = { showDatePicker = true }) {
-                                    Text("📅 Jadwal: ${dateFormatter.format(Date(selectedDate))}")
+                                    Text("Jadwal: ${dateFormatter.format(Date(selectedDate))}")
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                // TAB SELECTOR for schedule type
-                                TabRow(selectedTabIndex = selectedTab) {
-                                    SCHEDULE_TABS.forEachIndexed { index, title ->
-                                        Tab(
-                                            selected = selectedTab == index,
-                                            onClick = { selectedTab = index },
-                                            text = { Text(title, style = MaterialTheme.typography.labelSmall) }
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                // Fields per schedule type
-                                when (selectedTab) {
-                                    0 -> MonitoringFields(
+                                // Fields based on selected schedule type
+                                when (selectedScheduleType) {
+                                    ScheduleType.MONITORING -> MonitoringFields(
                                         granularInput, { granularInput = it },
                                         tabletInput, { tabletInput = it },
                                         hclInput, { hclInput = it },
@@ -354,11 +356,11 @@ fun ScheduleDialog(
                                         tesPhInput, { tesPhInput = it },
                                         tesChlorineInput, { tesChlorineInput = it }
                                     )
-                                    1 -> TreatmentMingguanFields(
+                                    ScheduleType.TREATMENT_MINGGUAN -> TreatmentMingguanFields(
                                         vakumInput, { vakumInput = it },
                                         brushingInput, { brushingInput = it }
                                     )
-                                    2 -> DeepTreatmentFields(
+                                    ScheduleType.DEEP_TREATMENT -> DeepTreatmentFields(
                                         kurasBalancingInput, { kurasBalancingInput = it }
                                     )
                                 }
@@ -368,17 +370,19 @@ fun ScheduleDialog(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceEvenly
                                 ) {
-                                    TextButton(onClick = { showAddForm = false }) {
+                                    TextButton(onClick = {
+                                        selectedScheduleType = null
+                                        granularInput = ""; tabletInput = ""; hclInput = ""
+                                        trusiInput = ""; sodaAshInput = ""; pacInput = ""
+                                        tesPhInput = ""; tesChlorineInput = ""
+                                        vakumInput = ""; brushingInput = ""
+                                        kurasBalancingInput = ""
+                                    }) {
                                         Text(stringResource(R.string.cancel))
                                     }
                                     TextButton(onClick = {
-                                        val scheduleTypeStr = when (selectedTab) {
-                                            0 -> ScheduleType.MONITORING
-                                            1 -> ScheduleType.TREATMENT_MINGGUAN
-                                            else -> ScheduleType.DEEP_TREATMENT
-                                        }
                                         onSchedule(
-                                            villaNumber, selectedDate, scheduleTypeStr,
+                                            villaNumber, selectedDate, selectedScheduleType!!,
                                             granularInput.toDoubleOrNull() ?: 0.0,
                                             tabletInput.toDoubleOrNull() ?: 0.0,
                                             hclInput.toDoubleOrNull() ?: 0.0,
@@ -392,7 +396,7 @@ fun ScheduleDialog(
                                             kurasBalancingInput.toDoubleOrNull() ?: 0.0,
                                             checkStatus
                                         )
-                                        showAddForm = false
+                                        selectedScheduleType = null
                                         granularInput = ""; tabletInput = ""; hclInput = ""
                                         trusiInput = ""; sodaAshInput = ""; pacInput = ""
                                         tesPhInput = ""; tesChlorineInput = ""
@@ -408,7 +412,7 @@ fun ScheduleDialog(
                     }
 
                     // Existing records
-                    if (existingRecords.isEmpty() && !showAddForm) {
+                    if (existingRecords.isEmpty() && selectedScheduleType == null) {
                         Text(
                             text = "Belum ada catatan untuk villa ini",
                             style = MaterialTheme.typography.bodyLarge,
@@ -436,11 +440,39 @@ fun ScheduleDialog(
             }
         },
         confirmButton = {
-            if (!showAddForm) {
-                TextButton(onClick = { showAddForm = true }) {
-                    Icon(imageVector = Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Jadwalkan")
+            if (selectedScheduleType == null) {
+                // 3 schedule type buttons — replaces the old single "+ Jadwalkan"
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Monitoring
+                    TextButton(
+                        onClick = { selectedScheduleType = ScheduleType.MONITORING },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(imageVector = Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = monitoringColor)
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text("Monitor", style = MaterialTheme.typography.labelSmall, color = monitoringColor)
+                    }
+                    // Treatment Mingguan
+                    TextButton(
+                        onClick = { selectedScheduleType = ScheduleType.TREATMENT_MINGGUAN },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(imageVector = Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = treatmentColor)
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text("Trt. Mingguan", style = MaterialTheme.typography.labelSmall, color = treatmentColor)
+                    }
+                    // Deep Treatment
+                    TextButton(
+                        onClick = { selectedScheduleType = ScheduleType.DEEP_TREATMENT },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(imageVector = Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = deepColor)
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text("Deep Trt.", style = MaterialTheme.typography.labelSmall, color = deepColor)
+                    }
                 }
             }
         },
