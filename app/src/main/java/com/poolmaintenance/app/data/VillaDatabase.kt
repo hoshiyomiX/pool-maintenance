@@ -7,16 +7,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [MaintenanceRecord::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class VillaDatabase : RoomDatabase() {
     abstract fun villaDao(): VillaDao
 
     companion object {
-        /**
-         * Migration from v1 to v2: add scheduledDate and isCompleted columns.
-         */
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE maintenance_records ADD COLUMN scheduledDate INTEGER NOT NULL DEFAULT 0")
@@ -25,10 +22,6 @@ abstract class VillaDatabase : RoomDatabase() {
             }
         }
 
-        /**
-         * Migration from v2 to v3: add 6 chemical columns (granular, tablet, hcl, trusi, sodaAsh, pac).
-         * Old obatAmount and hclAmount columns are kept for backward compatibility but are no longer used in UI.
-         */
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE maintenance_records ADD COLUMN granular REAL NOT NULL DEFAULT 0.0")
@@ -37,6 +30,24 @@ abstract class VillaDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE maintenance_records ADD COLUMN trusi REAL NOT NULL DEFAULT 0.0")
                 db.execSQL("ALTER TABLE maintenance_records ADD COLUMN sodaAsh REAL NOT NULL DEFAULT 0.0")
                 db.execSQL("ALTER TABLE maintenance_records ADD COLUMN pac REAL NOT NULL DEFAULT 0.0")
+            }
+        }
+
+        /**
+         * Migration from v3 to v4:
+         * - Add scheduleType column (default "Monitoring")
+         * - Add tesPh, tesChlorine (Monitoring)
+         * - Add vakum, brushing (Treatment Mingguan)
+         * - Add kurasBalancing (Deep Treatment)
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE maintenance_records ADD COLUMN scheduleType TEXT NOT NULL DEFAULT 'Monitoring'")
+                db.execSQL("ALTER TABLE maintenance_records ADD COLUMN tesPh REAL NOT NULL DEFAULT 0.0")
+                db.execSQL("ALTER TABLE maintenance_records ADD COLUMN tesChlorine REAL NOT NULL DEFAULT 0.0")
+                db.execSQL("ALTER TABLE maintenance_records ADD COLUMN vakum REAL NOT NULL DEFAULT 0.0")
+                db.execSQL("ALTER TABLE maintenance_records ADD COLUMN brushing REAL NOT NULL DEFAULT 0.0")
+                db.execSQL("ALTER TABLE maintenance_records ADD COLUMN kurasBalancing REAL NOT NULL DEFAULT 0.0")
             }
         }
     }

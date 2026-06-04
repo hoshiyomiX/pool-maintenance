@@ -34,11 +34,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -55,6 +58,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.poolmaintenance.app.R
 import com.poolmaintenance.app.data.MaintenanceRecord
+import com.poolmaintenance.app.data.ScheduleType
 import com.poolmaintenance.app.data.VillaRepository
 import com.poolmaintenance.app.ui.icons.AppIcons
 import java.text.SimpleDateFormat
@@ -64,7 +68,9 @@ import java.util.Locale
 // Denah layout constants
 private val CELL_WIDTH = 52.dp
 private val CELL_SPACING = 3.dp
-private val SLOT_WIDTH = CELL_WIDTH + CELL_SPACING // 55.dp per villa slot
+private val SLOT_WIDTH = CELL_WIDTH + CELL_SPACING
+
+private val SCHEDULE_TABS = listOf("Monitoring", "Trt. Mingguan", "Deep Trt.")
 
 @Composable
 fun MapScreen(
@@ -75,15 +81,12 @@ fun MapScreen(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Header
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.primary,
             shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = "Denah Villa",
                     style = MaterialTheme.typography.titleLarge,
@@ -99,7 +102,6 @@ fun MapScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Denah — unified single scroll, Card fits content (not stretched)
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -114,58 +116,42 @@ fun MapScreen(
                     .horizontalScroll(rememberScrollState())
                     .padding(8.dp)
             ) {
-                // Line A — pools face DOWN toward partition
                 VillaLineRow(
                     villaNumbers = VillaRepository.LINE_A,
                     poolDirection = PoolDirection.FACING_DOWN,
                     startOffset = 0,
                     onVillaClick = { viewModel.selectVilla(it) }
                 )
-
-                // Net partition between Line A and Line B
                 NetPartition()
-
-                // Line B — pools face UP, offset 3 so V49 aligns with V26
                 VillaLineRow(
                     villaNumbers = VillaRepository.LINE_B,
                     poolDirection = PoolDirection.FACING_UP,
                     startOffset = 3,
                     onVillaClick = { viewModel.selectVilla(it) }
                 )
-
-                // Separator between Line B and Line C
                 Spacer(modifier = Modifier.height(6.dp))
-                HorizontalDivider(
-                    thickness = 1.dp,
-                    color = Color(0xFF795548).copy(alpha = 0.3f)
-                )
+                HorizontalDivider(thickness = 1.dp, color = Color(0xFF795548).copy(alpha = 0.3f))
                 Spacer(modifier = Modifier.height(6.dp))
-
-                // Line C — pools face DOWN, offset 5 so V50 aligns with V30
                 VillaLineRow(
                     villaNumbers = VillaRepository.LINE_C,
                     poolDirection = PoolDirection.FACING_DOWN,
                     startOffset = 5,
                     onVillaClick = { viewModel.selectVilla(it) }
                 )
-
                 Spacer(modifier = Modifier.height(12.dp))
-
-                // Legend
                 LegendSection()
             }
         }
     }
 
-    // Schedule dialog
     if (uiState.showDialog && uiState.selectedVilla != null) {
         ScheduleDialog(
             villaNumber = uiState.selectedVilla!!,
             existingRecords = uiState.existingRecords,
             isLoading = uiState.isLoading,
             onDismiss = { viewModel.dismissDialog() },
-            onSchedule = { villaNum, date, granular, tablet, hcl, trusi, sodaAsh, pac, status ->
-                viewModel.scheduleMaintenance(villaNum, date, granular, tablet, hcl, trusi, sodaAsh, pac, status)
+            onSchedule = { villaNum, date, sType, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status ->
+                viewModel.scheduleMaintenance(villaNum, date, sType, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status)
             },
             onDeleteRecord = { id -> viewModel.deleteRecord(id) }
         )
@@ -181,9 +167,7 @@ fun VillaLineRow(
     startOffset: Int = 0,
     onVillaClick: (Int) -> Unit
 ) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(CELL_SPACING)
-    ) {
+    Row(horizontalArrangement = Arrangement.spacedBy(CELL_SPACING)) {
         if (startOffset > 0) {
             Spacer(modifier = Modifier.width(SLOT_WIDTH * startOffset - CELL_SPACING))
         }
@@ -198,104 +182,48 @@ fun VillaLineRow(
 }
 
 @Composable
-fun VillaCell(
-    villaNumber: Int,
-    poolDirection: PoolDirection,
-    onClick: () -> Unit
-) {
+fun VillaCell(villaNumber: Int, poolDirection: PoolDirection, onClick: () -> Unit) {
     val isEven = villaNumber % 2 == 0
-    val villaBg = if (isEven) {
-        Color(0xFFE3F2FD)
-    } else {
-        Color(0xFFE0F2F1)
-    }
+    val villaBg = if (isEven) Color(0xFFE3F2FD) else Color(0xFFE0F2F1)
     val poolBg = Color(0xFF4FC3F7).copy(alpha = 0.4f)
 
     Column(
-        modifier = Modifier
-            .width(CELL_WIDTH)
-            .clickable(onClick = onClick),
+        modifier = Modifier.width(CELL_WIDTH).clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (poolDirection == PoolDirection.FACING_DOWN) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(32.dp)
+                modifier = Modifier.fillMaxWidth().height(32.dp)
                     .background(villaBg, RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                        shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
-                    ),
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = String.format("%02d", villaNumber),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center
-                )
+                Text(text = String.format("%02d", villaNumber), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center)
             }
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(14.dp)
+                modifier = Modifier.fillMaxWidth().height(14.dp)
                     .background(poolBg, RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp))
-                    .border(
-                        width = 1.dp,
-                        color = Color(0xFF0288D1).copy(alpha = 0.3f),
-                        shape = RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp)
-                    ),
+                    .border(1.dp, Color(0xFF0288D1).copy(alpha = 0.3f), RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = AppIcons.Pool,
-                    contentDescription = null,
-                    tint = Color(0xFF01579B).copy(alpha = 0.6f),
-                    modifier = Modifier.size(10.dp)
-                )
+                Icon(imageVector = AppIcons.Pool, contentDescription = null, tint = Color(0xFF01579B).copy(alpha = 0.6f), modifier = Modifier.size(10.dp))
             }
         } else {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(14.dp)
+                modifier = Modifier.fillMaxWidth().height(14.dp)
                     .background(poolBg, RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
-                    .border(
-                        width = 1.dp,
-                        color = Color(0xFF0288D1).copy(alpha = 0.3f),
-                        shape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp)
-                    ),
+                    .border(1.dp, Color(0xFF0288D1).copy(alpha = 0.3f), RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = AppIcons.Pool,
-                    contentDescription = null,
-                    tint = Color(0xFF01579B).copy(alpha = 0.6f),
-                    modifier = Modifier.size(10.dp)
-                )
+                Icon(imageVector = AppIcons.Pool, contentDescription = null, tint = Color(0xFF01579B).copy(alpha = 0.6f), modifier = Modifier.size(10.dp))
             }
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(32.dp)
+                modifier = Modifier.fillMaxWidth().height(32.dp)
                     .background(villaBg, RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                        shape = RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp)
-                    ),
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = String.format("%02d", villaNumber),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center
-                )
+                Text(text = String.format("%02d", villaNumber), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center)
             }
         }
     }
@@ -303,62 +231,37 @@ fun VillaCell(
 
 @Composable
 fun NetPartition() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(Color(0xFF795548).copy(alpha = 0.5f))
-    )
+    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF795548).copy(alpha = 0.5f)))
 }
 
 @Composable
 fun LegendSection() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(8.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            Text(
-                text = "Keterangan",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold
-            )
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(text = "Keterangan", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .background(Color(0xFF4FC3F7).copy(alpha = 0.4f), RoundedCornerShape(2.dp))
-                )
+                Box(modifier = Modifier.size(12.dp).background(Color(0xFF4FC3F7).copy(alpha = 0.4f), RoundedCornerShape(2.dp)))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Private Pool", style = MaterialTheme.typography.labelSmall)
             }
             Spacer(modifier = Modifier.height(2.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .background(Color(0xFF795548).copy(alpha = 0.5f), RoundedCornerShape(2.dp))
-                )
+                Box(modifier = Modifier.size(12.dp).background(Color(0xFF795548).copy(alpha = 0.5f), RoundedCornerShape(2.dp)))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Sekat net", style = MaterialTheme.typography.labelSmall)
             }
             Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = "Pool Line A & B saling berhadapan",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text(text = "Pool Line A & B saling berhadapan", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
-// ========== Schedule Dialog with 6 chemical fields ==========
+// ========== Schedule Dialog with 3 tab types ==========
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -367,16 +270,25 @@ fun ScheduleDialog(
     existingRecords: List<MaintenanceRecord>,
     isLoading: Boolean,
     onDismiss: () -> Unit,
-    onSchedule: (Int, Long, Double, Double, Double, Double, Double, Double, String) -> Unit,
+    onSchedule: (Int, Long, String, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, String) -> Unit,
     onDeleteRecord: (Long) -> Unit
 ) {
     var showAddForm by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableIntStateOf(0) }
+    // Monitoring fields
     var granularInput by remember { mutableStateOf("") }
     var tabletInput by remember { mutableStateOf("") }
     var hclInput by remember { mutableStateOf("") }
     var trusiInput by remember { mutableStateOf("") }
     var sodaAshInput by remember { mutableStateOf("") }
     var pacInput by remember { mutableStateOf("") }
+    var tesPhInput by remember { mutableStateOf("") }
+    var tesChlorineInput by remember { mutableStateOf("") }
+    // Treatment Mingguan fields
+    var vakumInput by remember { mutableStateOf("") }
+    var brushingInput by remember { mutableStateOf("") }
+    // Deep Treatment fields
+    var kurasBalancingInput by remember { mutableStateOf("") }
     var checkStatus by remember { mutableStateOf("Sudah Dicek") }
     var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -386,28 +298,18 @@ fun ScheduleDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = AppIcons.Pool,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                Icon(imageVector = AppIcons.Pool, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Villa ${String.format("%02d", villaNumber)}")
             }
         },
         text = {
             if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(100.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
                     androidx.compose.material3.CircularProgressIndicator()
                 }
             } else {
                 Column {
-                    // Add schedule form
                     if (showAddForm) {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
@@ -422,70 +324,45 @@ fun ScheduleDialog(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                // Chemical inputs in 2-column grid layout
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    OutlinedTextField(
-                                        value = granularInput,
-                                        onValueChange = { granularInput = it },
-                                        label = { Text("Granular (kg)") },
-                                        modifier = Modifier.weight(1f),
-                                        singleLine = true
-                                    )
-                                    OutlinedTextField(
-                                        value = tabletInput,
-                                        onValueChange = { tabletInput = it },
-                                        label = { Text("Tablet") },
-                                        modifier = Modifier.weight(1f),
-                                        singleLine = true
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    OutlinedTextField(
-                                        value = hclInput,
-                                        onValueChange = { hclInput = it },
-                                        label = { Text("HCL (liter)") },
-                                        modifier = Modifier.weight(1f),
-                                        singleLine = true
-                                    )
-                                    OutlinedTextField(
-                                        value = trusiInput,
-                                        onValueChange = { trusiInput = it },
-                                        label = { Text("Trusi (kg)") },
-                                        modifier = Modifier.weight(1f),
-                                        singleLine = true
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    OutlinedTextField(
-                                        value = sodaAshInput,
-                                        onValueChange = { sodaAshInput = it },
-                                        label = { Text("Soda Ash (kg)") },
-                                        modifier = Modifier.weight(1f),
-                                        singleLine = true
-                                    )
-                                    OutlinedTextField(
-                                        value = pacInput,
-                                        onValueChange = { pacInput = it },
-                                        label = { Text("PAC (liter)") },
-                                        modifier = Modifier.weight(1f),
-                                        singleLine = true
-                                    )
+                                // DATE PICKER — moved to the top
+                                TextButton(onClick = { showDatePicker = true }) {
+                                    Text("📅 Jadwal: ${dateFormatter.format(Date(selectedDate))}")
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
-                                TextButton(onClick = { showDatePicker = true }) {
-                                    Text("Jadwal: ${dateFormatter.format(Date(selectedDate))}")
+
+                                // TAB SELECTOR for schedule type
+                                TabRow(selectedTabIndex = selectedTab) {
+                                    SCHEDULE_TABS.forEachIndexed { index, title ->
+                                        Tab(
+                                            selected = selectedTab == index,
+                                            onClick = { selectedTab = index },
+                                            text = { Text(title, style = MaterialTheme.typography.labelSmall) }
+                                        )
+                                    }
                                 }
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // Fields per schedule type
+                                when (selectedTab) {
+                                    0 -> MonitoringFields(
+                                        granularInput, { granularInput = it },
+                                        tabletInput, { tabletInput = it },
+                                        hclInput, { hclInput = it },
+                                        trusiInput, { trusiInput = it },
+                                        sodaAshInput, { sodaAshInput = it },
+                                        pacInput, { pacInput = it },
+                                        tesPhInput, { tesPhInput = it },
+                                        tesChlorineInput, { tesChlorineInput = it }
+                                    )
+                                    1 -> TreatmentMingguanFields(
+                                        vakumInput, { vakumInput = it },
+                                        brushingInput, { brushingInput = it }
+                                    )
+                                    2 -> DeepTreatmentFields(
+                                        kurasBalancingInput, { kurasBalancingInput = it }
+                                    )
+                                }
+
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -495,20 +372,32 @@ fun ScheduleDialog(
                                         Text(stringResource(R.string.cancel))
                                     }
                                     TextButton(onClick = {
-                                        val granular = granularInput.toDoubleOrNull() ?: 0.0
-                                        val tablet = tabletInput.toDoubleOrNull() ?: 0.0
-                                        val hcl = hclInput.toDoubleOrNull() ?: 0.0
-                                        val trusi = trusiInput.toDoubleOrNull() ?: 0.0
-                                        val sodaAsh = sodaAshInput.toDoubleOrNull() ?: 0.0
-                                        val pac = pacInput.toDoubleOrNull() ?: 0.0
-                                        onSchedule(villaNumber, selectedDate, granular, tablet, hcl, trusi, sodaAsh, pac, checkStatus)
+                                        val scheduleTypeStr = when (selectedTab) {
+                                            0 -> ScheduleType.MONITORING
+                                            1 -> ScheduleType.TREATMENT_MINGGUAN
+                                            else -> ScheduleType.DEEP_TREATMENT
+                                        }
+                                        onSchedule(
+                                            villaNumber, selectedDate, scheduleTypeStr,
+                                            granularInput.toDoubleOrNull() ?: 0.0,
+                                            tabletInput.toDoubleOrNull() ?: 0.0,
+                                            hclInput.toDoubleOrNull() ?: 0.0,
+                                            trusiInput.toDoubleOrNull() ?: 0.0,
+                                            sodaAshInput.toDoubleOrNull() ?: 0.0,
+                                            pacInput.toDoubleOrNull() ?: 0.0,
+                                            tesPhInput.toDoubleOrNull() ?: 0.0,
+                                            tesChlorineInput.toDoubleOrNull() ?: 0.0,
+                                            vakumInput.toDoubleOrNull() ?: 0.0,
+                                            brushingInput.toDoubleOrNull() ?: 0.0,
+                                            kurasBalancingInput.toDoubleOrNull() ?: 0.0,
+                                            checkStatus
+                                        )
                                         showAddForm = false
-                                        granularInput = ""
-                                        tabletInput = ""
-                                        hclInput = ""
-                                        trusiInput = ""
-                                        sodaAshInput = ""
-                                        pacInput = ""
+                                        granularInput = ""; tabletInput = ""; hclInput = ""
+                                        trusiInput = ""; sodaAshInput = ""; pacInput = ""
+                                        tesPhInput = ""; tesChlorineInput = ""
+                                        vakumInput = ""; brushingInput = ""
+                                        kurasBalancingInput = ""
                                     }) {
                                         Text(stringResource(R.string.save))
                                     }
@@ -549,20 +438,14 @@ fun ScheduleDialog(
         confirmButton = {
             if (!showAddForm) {
                 TextButton(onClick = { showAddForm = true }) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    Icon(imageVector = Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Jadwalkan")
                 }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Tutup")
-            }
+            TextButton(onClick = onDismiss) { Text("Tutup") }
         }
     )
 
@@ -573,9 +456,7 @@ fun ScheduleDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let {
-                        selectedDate = it
-                    }
+                    datePickerState.selectedDateMillis?.let { selectedDate = it }
                     showDatePicker = false
                 }) { Text("OK") }
             },
@@ -590,80 +471,161 @@ fun ScheduleDialog(
     }
 }
 
+// ========== Monitoring fields: Granular, Tablet, HCL, Trusi, Soda Ash, PAC, Tes pH, Tes Chlorine ==========
+@Composable
+fun MonitoringFields(
+    granular: String, onGranular: (String) -> Unit,
+    tablet: String, onTablet: (String) -> Unit,
+    hcl: String, onHcl: (String) -> Unit,
+    trusi: String, onTrusi: (String) -> Unit,
+    sodaAsh: String, onSodaAsh: (String) -> Unit,
+    pac: String, onPac: (String) -> Unit,
+    tesPh: String, onTesPh: (String) -> Unit,
+    tesChlorine: String, onTesChlorine: (String) -> Unit
+) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(value = granular, onValueChange = onGranular, label = { Text("Granular (kg)") }, modifier = Modifier.weight(1f), singleLine = true)
+        OutlinedTextField(value = tablet, onValueChange = onTablet, label = { Text("Tablet (pcs)") }, modifier = Modifier.weight(1f), singleLine = true)
+    }
+    Spacer(modifier = Modifier.height(6.dp))
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(value = hcl, onValueChange = onHcl, label = { Text("HCL (liter)") }, modifier = Modifier.weight(1f), singleLine = true)
+        OutlinedTextField(value = trusi, onValueChange = onTrusi, label = { Text("Trusi (kg)") }, modifier = Modifier.weight(1f), singleLine = true)
+    }
+    Spacer(modifier = Modifier.height(6.dp))
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(value = sodaAsh, onValueChange = onSodaAsh, label = { Text("Soda Ash (kg)") }, modifier = Modifier.weight(1f), singleLine = true)
+        OutlinedTextField(value = pac, onValueChange = onPac, label = { Text("PAC (liter)") }, modifier = Modifier.weight(1f), singleLine = true)
+    }
+    Spacer(modifier = Modifier.height(6.dp))
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(value = tesPh, onValueChange = onTesPh, label = { Text("Tes pH") }, modifier = Modifier.weight(1f), singleLine = true)
+        OutlinedTextField(value = tesChlorine, onValueChange = onTesChlorine, label = { Text("Tes Chlorine (ppm)") }, modifier = Modifier.weight(1f), singleLine = true)
+    }
+}
+
+// ========== Treatment Mingguan fields: Vakum, Brushing ==========
+@Composable
+fun TreatmentMingguanFields(
+    vakum: String, onVakum: (String) -> Unit,
+    brushing: String, onBrushing: (String) -> Unit
+) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(value = vakum, onValueChange = onVakum, label = { Text("Vakum (jam)") }, modifier = Modifier.weight(1f), singleLine = true)
+        OutlinedTextField(value = brushing, onValueChange = onBrushing, label = { Text("Brushing (jam)") }, modifier = Modifier.weight(1f), singleLine = true)
+    }
+}
+
+// ========== Deep Treatment fields: Kuras Balancing ==========
+@Composable
+fun DeepTreatmentFields(
+    kurasBalancing: String, onKurasBalancing: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = kurasBalancing,
+        onValueChange = onKurasBalancing,
+        label = { Text("Kuras Balancing (liter)") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true
+    )
+}
+
+// ========== Record item with schedule type badge ==========
 @Composable
 fun ScheduleRecordItem(
     record: MaintenanceRecord,
     dateFormatter: SimpleDateFormat,
     onDelete: () -> Unit
 ) {
+    val typeColor = when (record.scheduleType) {
+        ScheduleType.MONITORING -> Color(0xFF1565C0)
+        ScheduleType.TREATMENT_MINGGUAN -> Color(0xFF6A1B9A)
+        ScheduleType.DEEP_TREATMENT -> Color(0xFFBF360C)
+        else -> Color(0xFF757575)
+    }
+
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (record.isCompleted) Color(0xFFE8F5E9) else Color(0xFFFFF8E1)
         ),
         shape = RoundedCornerShape(6.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
+            modifier = Modifier.fillMaxWidth().padding(8.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Jadwal: ${dateFormatter.format(Date(record.scheduledDate))}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = record.checkStatus,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = when (record.checkStatus) {
-                            "Sudah Dicek" -> Color(0xFF2E7D32)
-                            else -> Color(0xFFC62828)
-                        }
-                    )
-                    if (record.isCompleted) {
-                        Spacer(modifier = Modifier.width(6.dp))
+                    // Schedule type badge
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = typeColor.copy(alpha = 0.15f)
+                    ) {
                         Text(
-                            text = "✓",
+                            text = record.scheduleType,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF2E7D32),
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = typeColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = dateFormatter.format(Date(record.scheduledDate)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (record.isCompleted) {
+                        Text(text = "✓", style = MaterialTheme.typography.labelSmall, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
                     IconButton(onClick = onDelete, modifier = Modifier.size(20.dp)) {
-                        Icon(
-                            imageVector = AppIcons.Delete,
-                            contentDescription = "Hapus",
-                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                            modifier = Modifier.size(14.dp)
-                        )
+                        Icon(imageVector = AppIcons.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
                     }
                 }
             }
             Spacer(modifier = Modifier.height(2.dp))
-            // Chemical summary — compact 2-row grid
-            Row(modifier = Modifier.fillMaxWidth()) {
-                ChemLabel("Granular", "${record.granular} kg")
-                Spacer(modifier = Modifier.width(8.dp))
-                ChemLabel("Tablet", "${record.tablet.toInt()}")
-                Spacer(modifier = Modifier.width(8.dp))
-                ChemLabel("HCL", "${record.hcl} L")
-            }
-            Row(modifier = Modifier.fillMaxWidth()) {
-                ChemLabel("Trusi", "${record.trusi} kg")
-                Spacer(modifier = Modifier.width(8.dp))
-                ChemLabel("Soda Ash", "${record.sodaAsh} kg")
-                Spacer(modifier = Modifier.width(8.dp))
-                ChemLabel("PAC", "${record.pac} L")
+            // Show fields based on schedule type
+            when (record.scheduleType) {
+                ScheduleType.MONITORING -> {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        ChemLabel("Granular", "${record.granular} kg")
+                        Spacer(modifier = Modifier.width(6.dp))
+                        ChemLabel("Tablet", "${record.tablet.toInt()}")
+                        Spacer(modifier = Modifier.width(6.dp))
+                        ChemLabel("HCL", "${record.hcl} L")
+                    }
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        ChemLabel("Trusi", "${record.trusi} kg")
+                        Spacer(modifier = Modifier.width(6.dp))
+                        ChemLabel("Soda Ash", "${record.sodaAsh} kg")
+                        Spacer(modifier = Modifier.width(6.dp))
+                        ChemLabel("PAC", "${record.pac} L")
+                    }
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        ChemLabel("pH", "${record.tesPh}")
+                        Spacer(modifier = Modifier.width(6.dp))
+                        ChemLabel("Chlorine", "${record.tesChlorine} ppm")
+                    }
+                }
+                ScheduleType.TREATMENT_MINGGUAN -> {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        ChemLabel("Vakum", "${record.vakum} jam")
+                        Spacer(modifier = Modifier.width(6.dp))
+                        ChemLabel("Brushing", "${record.brushing} jam")
+                    }
+                }
+                ScheduleType.DEEP_TREATMENT -> {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        ChemLabel("Kuras Balancing", "${record.kurasBalancing} L")
+                    }
+                }
             }
         }
     }

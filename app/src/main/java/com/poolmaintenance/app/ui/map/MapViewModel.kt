@@ -52,12 +52,18 @@ class MapViewModel @Inject constructor(
     fun scheduleMaintenance(
         villaNumber: Int,
         scheduledDate: Long,
+        scheduleType: String,
         granular: Double,
         tablet: Double,
         hcl: Double,
         trusi: Double,
         sodaAsh: Double,
         pac: Double,
+        tesPh: Double,
+        tesChlorine: Double,
+        vakum: Double,
+        brushing: Double,
+        kurasBalancing: Double,
         checkStatus: String
     ) {
         viewModelScope.launch {
@@ -65,17 +71,22 @@ class MapViewModel @Inject constructor(
                 villaNumber = villaNumber,
                 date = System.currentTimeMillis(),
                 scheduledDate = scheduledDate,
+                scheduleType = scheduleType,
                 granular = granular,
                 tablet = tablet,
                 hcl = hcl,
                 trusi = trusi,
                 sodaAsh = sodaAsh,
                 pac = pac,
+                tesPh = tesPh,
+                tesChlorine = tesChlorine,
+                vakum = vakum,
+                brushing = brushing,
+                kurasBalancing = kurasBalancing,
                 checkStatus = checkStatus,
                 isCompleted = false
             )
             repository.insertRecord(record)
-            // Refresh records
             val updatedRecords = repository.getRecordsForVilla(villaNumber)
             _uiState.value = _uiState.value.copy(existingRecords = updatedRecords)
         }

@@ -4,16 +4,22 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
+ * Schedule type constants used in scheduleType column.
+ */
+object ScheduleType {
+    const val MONITORING = "Monitoring"
+    const val TREATMENT_MINGGUAN = "Treatment Mingguan"
+    const val DEEP_TREATMENT = "Deep Treatment"
+}
+
+/**
  * Represents a single pool maintenance record for a villa.
- * Each record captures chemical usage, check status, and scheduling information.
+ * Each record captures chemical usage, tasks performed, check status, and scheduling information.
  *
- * Chemical fields with units:
- * - granular (kg) — chlorine granules
- * - tablet (tablet) — chlorine tablets
- * - hcl (liter) — hydrochloric acid
- * - trusi (kg) — trusi/tawas (alum)
- * - sodaAsh (kg) — sodium carbonate
- * - pac (liter) — poly aluminum chloride
+ * Schedule types:
+ * - Monitoring: granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine
+ * - Treatment Mingguan: vakum, brushing
+ * - Deep Treatment: kurasBalancing
  */
 @Entity(tableName = "maintenance_records")
 data class MaintenanceRecord(
@@ -22,16 +28,24 @@ data class MaintenanceRecord(
     val villaNumber: Int,
     val date: Long,
     val scheduledDate: Long = date,
+    val scheduleType: String = ScheduleType.MONITORING,
     val checkStatus: String,
     val isCompleted: Boolean = false,
-    // Chemical fields
+    // Monitoring fields
     val granular: Double = 0.0,
     val tablet: Double = 0.0,
     val hcl: Double = 0.0,
     val trusi: Double = 0.0,
     val sodaAsh: Double = 0.0,
     val pac: Double = 0.0,
-    // Legacy fields kept for migration compatibility (unused in v3+)
+    val tesPh: Double = 0.0,
+    val tesChlorine: Double = 0.0,
+    // Treatment Mingguan fields
+    val vakum: Double = 0.0,
+    val brushing: Double = 0.0,
+    // Deep Treatment fields
+    val kurasBalancing: Double = 0.0,
+    // Legacy fields kept for migration compatibility (unused in v4+)
     val obatAmount: Double = 0.0,
     val hclAmount: Double = 0.0
 )
@@ -46,11 +60,16 @@ data class AggregatedStats(
     val totalTrusi: Double,
     val totalSodaAsh: Double,
     val totalPac: Double,
+    val totalTesPh: Double,
+    val totalTesChlorine: Double,
+    val totalVakum: Double,
+    val totalBrushing: Double,
+    val totalKurasBalancing: Double,
     val totalChecks: Int
 )
 
 /**
- * Per-villa aggregated statistics with all 6 chemicals.
+ * Per-villa aggregated statistics with all chemicals and tasks.
  */
 data class VillaStats(
     val villaNumber: Int,
@@ -60,5 +79,10 @@ data class VillaStats(
     val totalTrusi: Double,
     val totalSodaAsh: Double,
     val totalPac: Double,
+    val totalTesPh: Double,
+    val totalTesChlorine: Double,
+    val totalVakum: Double,
+    val totalBrushing: Double,
+    val totalKurasBalancing: Double,
     val totalChecks: Int
 )

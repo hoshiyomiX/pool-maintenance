@@ -19,9 +19,6 @@ interface VillaDao {
     @Query("SELECT * FROM maintenance_records ORDER BY scheduledDate DESC")
     fun getAllRecordsFlow(): kotlinx.coroutines.flow.Flow<List<MaintenanceRecord>>
 
-    /**
-     * Get today's scheduled reminders.
-     */
     @Query("""
         SELECT * FROM maintenance_records
         WHERE scheduledDate >= :startOfDay AND scheduledDate < :endOfDay
@@ -29,9 +26,6 @@ interface VillaDao {
     """)
     suspend fun getTodayReminders(startOfDay: Long, endOfDay: Long): List<MaintenanceRecord>
 
-    /**
-     * Get today's scheduled reminders as Flow for reactive updates.
-     */
     @Query("""
         SELECT * FROM maintenance_records
         WHERE scheduledDate >= :startOfDay AND scheduledDate < :endOfDay
@@ -39,9 +33,6 @@ interface VillaDao {
     """)
     fun getTodayRemindersFlow(startOfDay: Long, endOfDay: Long): kotlinx.coroutines.flow.Flow<List<MaintenanceRecord>>
 
-    /**
-     * Get schedule for a specific villa on a specific date.
-     */
     @Query("""
         SELECT * FROM maintenance_records
         WHERE villaNumber = :villaNumber AND scheduledDate >= :startOfDay AND scheduledDate < :endOfDay
@@ -55,9 +46,6 @@ interface VillaDao {
     @Query("UPDATE maintenance_records SET isCompleted = 0 WHERE id = :id")
     suspend fun markIncomplete(id: Long)
 
-    /**
-     * Aggregated stats for a specific time range — all 6 chemicals.
-     */
     @Query("""
         SELECT COALESCE(SUM(granular), 0.0) AS totalGranular,
                COALESCE(SUM(tablet), 0.0) AS totalTablet,
@@ -65,15 +53,17 @@ interface VillaDao {
                COALESCE(SUM(trusi), 0.0) AS totalTrusi,
                COALESCE(SUM(sodaAsh), 0.0) AS totalSodaAsh,
                COALESCE(SUM(pac), 0.0) AS totalPac,
+               COALESCE(SUM(tesPh), 0.0) AS totalTesPh,
+               COALESCE(SUM(tesChlorine), 0.0) AS totalTesChlorine,
+               COALESCE(SUM(vakum), 0.0) AS totalVakum,
+               COALESCE(SUM(brushing), 0.0) AS totalBrushing,
+               COALESCE(SUM(kurasBalancing), 0.0) AS totalKurasBalancing,
                COUNT(*) AS totalChecks
         FROM maintenance_records
         WHERE date BETWEEN :startMs AND :endMs
     """)
     suspend fun getStatsInRange(startMs: Long, endMs: Long): AggregatedStats
 
-    /**
-     * Per-villa aggregated stats for a specific time range — all 6 chemicals.
-     */
     @Query("""
         SELECT villaNumber,
                COALESCE(SUM(granular), 0.0) AS totalGranular,
@@ -82,6 +72,11 @@ interface VillaDao {
                COALESCE(SUM(trusi), 0.0) AS totalTrusi,
                COALESCE(SUM(sodaAsh), 0.0) AS totalSodaAsh,
                COALESCE(SUM(pac), 0.0) AS totalPac,
+               COALESCE(SUM(tesPh), 0.0) AS totalTesPh,
+               COALESCE(SUM(tesChlorine), 0.0) AS totalTesChlorine,
+               COALESCE(SUM(vakum), 0.0) AS totalVakum,
+               COALESCE(SUM(brushing), 0.0) AS totalBrushing,
+               COALESCE(SUM(kurasBalancing), 0.0) AS totalKurasBalancing,
                COUNT(*) AS totalChecks
         FROM maintenance_records
         WHERE date BETWEEN :startMs AND :endMs

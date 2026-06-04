@@ -26,6 +26,7 @@ object DatabaseModule {
         )
             .addMigrations(VillaDatabase.MIGRATION_1_2)
             .addMigrations(VillaDatabase.MIGRATION_2_3)
+            .addMigrations(VillaDatabase.MIGRATION_3_4)
             .fallbackToDestructiveMigration()
             .build()
     }
