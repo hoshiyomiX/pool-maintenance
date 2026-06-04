@@ -21,7 +21,7 @@ enum class TimeFilter(val label: String) {
 
 data class StatsUiState(
     val currentFilter: TimeFilter = TimeFilter.MONTHLY,
-    val aggregatedStats: AggregatedStats = AggregatedStats(0.0, 0.0, 0),
+    val aggregatedStats: AggregatedStats = AggregatedStats(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0),
     val perVillaStats: List<VillaStats> = emptyList(),
     val isLoading: Boolean = false
 )
@@ -64,19 +64,12 @@ class StatsViewModel @Inject constructor(
         val endMs = calendar.timeInMillis
 
         when (filter) {
-            TimeFilter.WEEKLY -> {
-                calendar.add(Calendar.DAY_OF_YEAR, -7)
-            }
-            TimeFilter.MONTHLY -> {
-                calendar.add(Calendar.MONTH, -1)
-            }
-            TimeFilter.YEARLY -> {
-                calendar.add(Calendar.YEAR, -1)
-            }
+            TimeFilter.WEEKLY -> calendar.add(Calendar.DAY_OF_YEAR, -7)
+            TimeFilter.MONTHLY -> calendar.add(Calendar.MONTH, -1)
+            TimeFilter.YEARLY -> calendar.add(Calendar.YEAR, -1)
         }
 
-        val startMs = calendar.timeInMillis
-        return Pair(startMs, endMs)
+        return Pair(calendar.timeInMillis, endMs)
     }
 
     fun refresh() {

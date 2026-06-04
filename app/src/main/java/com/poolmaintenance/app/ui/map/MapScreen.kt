@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -99,15 +100,13 @@ fun MapScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Denah — unified single scroll (pan entire map as one)
+        // Denah — unified single scroll, Card fits content (not stretched)
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
+                .padding(horizontal = 8.dp),
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
+            colors = CardDefaults.cardColors(),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
@@ -116,7 +115,7 @@ fun MapScreen(
                     .horizontalScroll(rememberScrollState())
                     .padding(8.dp)
             ) {
-                // Line A — pools face DOWN toward partition (no label)
+                // Line A — pools face DOWN toward partition
                 VillaLineRow(
                     villaNumbers = VillaRepository.LINE_A,
                     poolDirection = PoolDirection.FACING_DOWN,
@@ -124,11 +123,10 @@ fun MapScreen(
                     onVillaClick = { viewModel.selectVilla(it) }
                 )
 
-                // Net partition between Line A and Line B (thin — just a net)
+                // Net partition between Line A and Line B
                 NetPartition()
 
-                // Line B — pools face UP toward partition (no label)
-                // Offset 3 so V49 aligns with V26
+                // Line B — pools face UP, offset 3 so V49 aligns with V26
                 VillaLineRow(
                     villaNumbers = VillaRepository.LINE_B,
                     poolDirection = PoolDirection.FACING_UP,
@@ -144,8 +142,7 @@ fun MapScreen(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Line C — pools face DOWN like Line A (no label)
-                // Offset 5 so V50 aligns with V30
+                // Line C — pools face DOWN, offset 5 so V50 aligns with V30
                 VillaLineRow(
                     villaNumbers = VillaRepository.LINE_C,
                     poolDirection = PoolDirection.FACING_DOWN,
@@ -168,8 +165,8 @@ fun MapScreen(
             existingRecords = uiState.existingRecords,
             isLoading = uiState.isLoading,
             onDismiss = { viewModel.dismissDialog() },
-            onSchedule = { villaNum, date, obat, hcl, status ->
-                viewModel.scheduleMaintenance(villaNum, date, obat, hcl, status)
+            onSchedule = { villaNum, date, granular, tablet, hcl, trusi, sodaAsh, pac, status ->
+                viewModel.scheduleMaintenance(villaNum, date, granular, tablet, hcl, trusi, sodaAsh, pac, status)
             },
             onDeleteRecord = { id -> viewModel.deleteRecord(id) }
         )
@@ -178,10 +175,6 @@ fun MapScreen(
 
 enum class PoolDirection { FACING_DOWN, FACING_UP }
 
-/**
- * A single horizontal row of villa cells.
- * [startOffset] shifts the row right by N villa positions for alignment.
- */
 @Composable
 fun VillaLineRow(
     villaNumbers: List<Int>,
@@ -192,9 +185,7 @@ fun VillaLineRow(
     Row(
         horizontalArrangement = Arrangement.spacedBy(CELL_SPACING)
     ) {
-        // Alignment offset spacer
         if (startOffset > 0) {
-            // Account for the spacing that Arrangement.spacedBy adds after the Spacer
             Spacer(modifier = Modifier.width(SLOT_WIDTH * startOffset - CELL_SPACING))
         }
         villaNumbers.forEach { villaNum ->
@@ -228,7 +219,6 @@ fun VillaCell(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (poolDirection == PoolDirection.FACING_DOWN) {
-            // Villa unit on top, pool below facing the partition
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -269,7 +259,6 @@ fun VillaCell(
                 )
             }
         } else {
-            // Pool on top facing up toward partition, villa unit below
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -313,10 +302,6 @@ fun VillaCell(
     }
 }
 
-/**
- * Thin net partition between Line A and Line B.
- * Just 1dp — represents a net divider between facing pools.
- */
 @Composable
 fun NetPartition() {
     Box(
@@ -374,6 +359,8 @@ fun LegendSection() {
     }
 }
 
+// ========== Schedule Dialog with 6 chemical fields ==========
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduleDialog(
@@ -381,12 +368,16 @@ fun ScheduleDialog(
     existingRecords: List<MaintenanceRecord>,
     isLoading: Boolean,
     onDismiss: () -> Unit,
-    onSchedule: (Int, Long, Double, Double, String) -> Unit,
+    onSchedule: (Int, Long, Double, Double, Double, Double, Double, Double, String) -> Unit,
     onDeleteRecord: (Long) -> Unit
 ) {
     var showAddForm by remember { mutableStateOf(false) }
-    var obatInput by remember { mutableStateOf("") }
+    var granularInput by remember { mutableStateOf("") }
+    var tabletInput by remember { mutableStateOf("") }
     var hclInput by remember { mutableStateOf("") }
+    var trusiInput by remember { mutableStateOf("") }
+    var sodaAshInput by remember { mutableStateOf("") }
+    var pacInput by remember { mutableStateOf("") }
     var checkStatus by remember { mutableStateOf("Sudah Dicek") }
     var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -431,21 +422,67 @@ fun ScheduleDialog(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                OutlinedTextField(
-                                    value = obatInput,
-                                    onValueChange = { obatInput = it },
-                                    label = { Text(stringResource(R.string.obat_label)) },
+
+                                // Chemical inputs in 2-column grid layout
+                                Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                OutlinedTextField(
-                                    value = hclInput,
-                                    onValueChange = { hclInput = it },
-                                    label = { Text(stringResource(R.string.hcl_label)) },
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedTextField(
+                                        value = granularInput,
+                                        onValueChange = { granularInput = it },
+                                        label = { Text("Granular (kg)") },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true
+                                    )
+                                    OutlinedTextField(
+                                        value = tabletInput,
+                                        onValueChange = { tabletInput = it },
+                                        label = { Text("Tablet") },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true
-                                )
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedTextField(
+                                        value = hclInput,
+                                        onValueChange = { hclInput = it },
+                                        label = { Text("HCL (liter)") },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true
+                                    )
+                                    OutlinedTextField(
+                                        value = trusiInput,
+                                        onValueChange = { trusiInput = it },
+                                        label = { Text("Trusi (kg)") },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedTextField(
+                                        value = sodaAshInput,
+                                        onValueChange = { sodaAshInput = it },
+                                        label = { Text("Soda Ash (kg)") },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true
+                                    )
+                                    OutlinedTextField(
+                                        value = pacInput,
+                                        onValueChange = { pacInput = it },
+                                        label = { Text("PAC (liter)") },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 TextButton(onClick = { showDatePicker = true }) {
                                     Text("Jadwal: ${dateFormatter.format(Date(selectedDate))}")
@@ -459,12 +496,20 @@ fun ScheduleDialog(
                                         Text(stringResource(R.string.cancel))
                                     }
                                     TextButton(onClick = {
-                                        val obat = obatInput.toDoubleOrNull() ?: 0.0
+                                        val granular = granularInput.toDoubleOrNull() ?: 0.0
+                                        val tablet = tabletInput.toDoubleOrNull() ?: 0.0
                                         val hcl = hclInput.toDoubleOrNull() ?: 0.0
-                                        onSchedule(villaNumber, selectedDate, obat, hcl, checkStatus)
+                                        val trusi = trusiInput.toDoubleOrNull() ?: 0.0
+                                        val sodaAsh = sodaAshInput.toDoubleOrNull() ?: 0.0
+                                        val pac = pacInput.toDoubleOrNull() ?: 0.0
+                                        onSchedule(villaNumber, selectedDate, granular, tablet, hcl, trusi, sodaAsh, pac, checkStatus)
                                         showAddForm = false
-                                        obatInput = ""
+                                        granularInput = ""
+                                        tabletInput = ""
                                         hclInput = ""
+                                        trusiInput = ""
+                                        sodaAshInput = ""
+                                        pacInput = ""
                                     }) {
                                         Text(stringResource(R.string.save))
                                     }
@@ -561,30 +606,21 @@ fun ScheduleRecordItem(
         ),
         shape = RoundedCornerShape(6.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(8.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = "Jadwal: ${dateFormatter.format(Date(record.scheduledDate))}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Row {
-                    Text(
-                        text = "Obat: ${record.obatAmount}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(end = 12.dp)
-                    )
-                    Text(
-                        text = "HCL: ${record.hclAmount}",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = record.checkStatus,
@@ -595,24 +631,51 @@ fun ScheduleRecordItem(
                         }
                     )
                     if (record.isCompleted) {
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "✓ Selesai",
+                            text = "✓",
                             style = MaterialTheme.typography.labelSmall,
                             color = Color(0xFF2E7D32),
                             fontWeight = FontWeight.Bold
                         )
                     }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(onClick = onDelete, modifier = Modifier.size(20.dp)) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = "Hapus",
+                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
             }
-            IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = "Hapus",
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                    modifier = Modifier.size(16.dp)
-                )
+            Spacer(modifier = Modifier.height(2.dp))
+            // Chemical summary — compact 2-row grid
+            Row(modifier = Modifier.fillMaxWidth()) {
+                ChemLabel("Granular", "${record.granular} kg")
+                Spacer(modifier = Modifier.width(8.dp))
+                ChemLabel("Tablet", "${record.tablet.toInt()}")
+                Spacer(modifier = Modifier.width(8.dp))
+                ChemLabel("HCL", "${record.hcl} L")
+            }
+            Row(modifier = Modifier.fillMaxWidth()) {
+                ChemLabel("Trusi", "${record.trusi} kg")
+                Spacer(modifier = Modifier.width(8.dp))
+                ChemLabel("Soda Ash", "${record.sodaAsh} kg")
+                Spacer(modifier = Modifier.width(8.dp))
+                ChemLabel("PAC", "${record.pac} L")
             }
         }
     }
+}
+
+@Composable
+fun ChemLabel(name: String, value: String) {
+    Text(
+        text = "$name: $value",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textDecoration = TextDecoration.None
+    )
 }

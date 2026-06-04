@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.poolmaintenance.app.data.VillaStats
 
 @Composable
 fun StatsScreen(
@@ -60,7 +62,7 @@ fun StatsScreen(
                     color = MaterialTheme.colorScheme.onPrimary
                 )
                 Text(
-                    text = "Akumulasi penggunaan obat & HCL",
+                    text = "Akumulasi penggunaan bahan kimia",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                 )
@@ -99,32 +101,61 @@ fun StatsScreen(
                 CircularProgressIndicator()
             }
         } else {
-            // Summary cards
+            // Summary cards — 2 rows of 3
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 StatCard(
-                    title = "Obat",
-                    value = "${uiState.aggregatedStats.totalObat}",
-                    icon = { Icon(Icons.Filled.Science, contentDescription = "Obat", tint = Color(0xFF1565C0)) },
+                    title = "Granular (kg)",
+                    value = "${uiState.aggregatedStats.totalGranular}",
+                    icon = { Icon(Icons.Filled.Science, contentDescription = "Granular", tint = Color(0xFF1565C0)) },
                     backgroundColor = Color(0xFFE3F2FD),
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
-                    title = "HCL",
+                    title = "Tablet",
+                    value = "${uiState.aggregatedStats.totalTablet.toInt()}",
+                    icon = { Icon(Icons.Filled.Science, contentDescription = "Tablet", tint = Color(0xFF6A1B9A)) },
+                    backgroundColor = Color(0xFFF3E5F5),
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = "HCL (L)",
                     value = "${uiState.aggregatedStats.totalHcl}",
                     icon = { Icon(Icons.Filled.WaterDrop, contentDescription = "HCL", tint = Color(0xFF00695C)) },
                     backgroundColor = Color(0xFFE0F2F1),
                     modifier = Modifier.weight(1f)
                 )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 StatCard(
-                    title = "Cek",
-                    value = "${uiState.aggregatedStats.totalChecks}",
-                    icon = { Icon(Icons.Filled.CheckCircle, contentDescription = "Pengecekan", tint = Color(0xFF2E7D32)) },
-                    backgroundColor = Color(0xFFE8F5E9),
+                    title = "Trusi (kg)",
+                    value = "${uiState.aggregatedStats.totalTrusi}",
+                    icon = { Icon(Icons.Filled.Science, contentDescription = "Trusi", tint = Color(0xFFBF360C)) },
+                    backgroundColor = Color(0xFFFBE9E7),
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = "Soda Ash (kg)",
+                    value = "${uiState.aggregatedStats.totalSodaAsh}",
+                    icon = { Icon(Icons.Filled.Science, contentDescription = "Soda Ash", tint = Color(0xFFE65100)) },
+                    backgroundColor = Color(0xFFFFF3E0),
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = "PAC (L)",
+                    value = "${uiState.aggregatedStats.totalPac}",
+                    icon = { Icon(Icons.Filled.WaterDrop, contentDescription = "PAC", tint = Color(0xFF0277BD)) },
+                    backgroundColor = Color(0xFFE1F5FE),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -184,11 +215,11 @@ fun StatCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             icon()
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelSmall,
@@ -196,7 +227,7 @@ fun StatCard(
             )
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -205,7 +236,7 @@ fun StatCard(
 }
 
 @Composable
-fun VillaStatRow(stat: com.poolmaintenance.app.data.VillaStats) {
+fun VillaStatRow(stat: VillaStats) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -213,49 +244,42 @@ fun VillaStatRow(stat: com.poolmaintenance.app.data.VillaStats) {
         ),
         shape = RoundedCornerShape(8.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(12.dp)
         ) {
             Text(
                 text = "Villa ${stat.villaNumber}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            Row {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Obat", style = MaterialTheme.typography.labelSmall)
-                    Text(
-                        "${stat.totalObat}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1565C0)
-                    )
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("HCL", style = MaterialTheme.typography.labelSmall)
-                    Text(
-                        "${stat.totalHcl}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF00695C)
-                    )
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Cek", style = MaterialTheme.typography.labelSmall)
-                    Text(
-                        "${stat.totalChecks}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2E7D32)
-                    )
-                }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                ChemStat("Granular", "${stat.totalGranular} kg", Color(0xFF1565C0))
+                ChemStat("Tablet", "${stat.totalTablet.toInt()}", Color(0xFF6A1B9A))
+                ChemStat("HCL", "${stat.totalHcl} L", Color(0xFF00695C))
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                ChemStat("Trusi", "${stat.totalTrusi} kg", Color(0xFFBF360C))
+                ChemStat("Soda Ash", "${stat.totalSodaAsh} kg", Color(0xFFE65100))
+                ChemStat("PAC", "${stat.totalPac} L", Color(0xFF0277BD))
             }
         }
+    }
+}
+
+@Composable
+fun ChemStat(label: String, value: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = color)
     }
 }

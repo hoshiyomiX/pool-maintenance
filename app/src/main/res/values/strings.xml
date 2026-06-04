@@ -12,8 +12,13 @@
     <string name="filter_weekly">Mingguan</string>
     <string name="filter_monthly">Bulanan</string>
     <string name="filter_yearly">Tahunan</string>
+    <string name="granular_label">Granular (kg)</string>
+    <string name="tablet_label">Tablet</string>
+    <string name="hcl_label">HCL (liter)</string>
+    <string name="trusi_label">Trusi (kg)</string>
+    <string name="soda_ash_label">Soda Ash (kg)</string>
+    <string name="pac_label">PAC (liter)</string>
     <string name="obat_label">Obat</string>
-    <string name="hcl_label">HCL</string>
     <string name="check_label">Pengecekan</string>
     <string name="add_record">Tambah Catatan</string>
     <string name="schedule">Jadwalkan</string>

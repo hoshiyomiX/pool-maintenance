@@ -21,7 +21,6 @@ interface VillaDao {
 
     /**
      * Get today's scheduled reminders.
-     * Returns records where scheduledDate falls within today's date range (start of day to end of day).
      */
     @Query("""
         SELECT * FROM maintenance_records
@@ -50,24 +49,22 @@ interface VillaDao {
     """)
     suspend fun getScheduleForVillaOnDate(villaNumber: Int, startOfDay: Long, endOfDay: Long): List<MaintenanceRecord>
 
-    /**
-     * Mark a record as completed.
-     */
     @Query("UPDATE maintenance_records SET isCompleted = 1 WHERE id = :id")
     suspend fun markCompleted(id: Long)
 
-    /**
-     * Mark a record as incomplete.
-     */
     @Query("UPDATE maintenance_records SET isCompleted = 0 WHERE id = :id")
     suspend fun markIncomplete(id: Long)
 
     /**
-     * Aggregated stats for a specific time range.
+     * Aggregated stats for a specific time range — all 6 chemicals.
      */
     @Query("""
-        SELECT COALESCE(SUM(obatAmount), 0.0) AS totalObat,
-               COALESCE(SUM(hclAmount), 0.0) AS totalHcl,
+        SELECT COALESCE(SUM(granular), 0.0) AS totalGranular,
+               COALESCE(SUM(tablet), 0.0) AS totalTablet,
+               COALESCE(SUM(hcl), 0.0) AS totalHcl,
+               COALESCE(SUM(trusi), 0.0) AS totalTrusi,
+               COALESCE(SUM(sodaAsh), 0.0) AS totalSodaAsh,
+               COALESCE(SUM(pac), 0.0) AS totalPac,
                COUNT(*) AS totalChecks
         FROM maintenance_records
         WHERE date BETWEEN :startMs AND :endMs
@@ -75,12 +72,16 @@ interface VillaDao {
     suspend fun getStatsInRange(startMs: Long, endMs: Long): AggregatedStats
 
     /**
-     * Per-villa aggregated stats for a specific time range.
+     * Per-villa aggregated stats for a specific time range — all 6 chemicals.
      */
     @Query("""
         SELECT villaNumber,
-               COALESCE(SUM(obatAmount), 0.0) AS totalObat,
-               COALESCE(SUM(hclAmount), 0.0) AS totalHcl,
+               COALESCE(SUM(granular), 0.0) AS totalGranular,
+               COALESCE(SUM(tablet), 0.0) AS totalTablet,
+               COALESCE(SUM(hcl), 0.0) AS totalHcl,
+               COALESCE(SUM(trusi), 0.0) AS totalTrusi,
+               COALESCE(SUM(sodaAsh), 0.0) AS totalSodaAsh,
+               COALESCE(SUM(pac), 0.0) AS totalPac,
                COUNT(*) AS totalChecks
         FROM maintenance_records
         WHERE date BETWEEN :startMs AND :endMs
@@ -92,13 +93,3 @@ interface VillaDao {
     @Query("DELETE FROM maintenance_records WHERE id = :id")
     suspend fun deleteRecord(id: Long)
 }
-
-/**
- * Per-villa aggregated statistics.
- */
-data class VillaStats(
-    val villaNumber: Int,
-    val totalObat: Double,
-    val totalHcl: Double,
-    val totalChecks: Int
-)

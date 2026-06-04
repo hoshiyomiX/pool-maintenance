@@ -52,8 +52,12 @@ class MapViewModel @Inject constructor(
     fun scheduleMaintenance(
         villaNumber: Int,
         scheduledDate: Long,
-        obatAmount: Double,
-        hclAmount: Double,
+        granular: Double,
+        tablet: Double,
+        hcl: Double,
+        trusi: Double,
+        sodaAsh: Double,
+        pac: Double,
         checkStatus: String
     ) {
         viewModelScope.launch {
@@ -61,8 +65,12 @@ class MapViewModel @Inject constructor(
                 villaNumber = villaNumber,
                 date = System.currentTimeMillis(),
                 scheduledDate = scheduledDate,
-                obatAmount = obatAmount,
-                hclAmount = hclAmount,
+                granular = granular,
+                tablet = tablet,
+                hcl = hcl,
+                trusi = trusi,
+                sodaAsh = sodaAsh,
+                pac = pac,
                 checkStatus = checkStatus,
                 isCompleted = false
             )

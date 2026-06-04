@@ -25,6 +25,7 @@ object DatabaseModule {
             "pool_maintenance_db"
         )
             .addMigrations(VillaDatabase.MIGRATION_1_2)
+            .addMigrations(VillaDatabase.MIGRATION_2_3)
             .fallbackToDestructiveMigration()
             .build()
     }

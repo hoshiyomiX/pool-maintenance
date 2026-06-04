@@ -35,12 +35,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.poolmaintenance.app.R
 import com.poolmaintenance.app.data.MaintenanceRecord
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -176,6 +174,7 @@ fun ReminderCard(
         isCompleted -> Color(0xFF2E7D32)
         else -> Color(0xFFF57F17)
     }
+    val textDeco = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -203,7 +202,7 @@ fun ReminderCard(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Villa info
+            // Villa info + chemicals
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -220,23 +219,53 @@ fun ReminderCard(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                        textDecoration = textDeco
                     )
                 }
                 Spacer(modifier = Modifier.height(2.dp))
+                // Chemical summary in 2 rows
                 Row {
                     Text(
-                        text = "Obat: ${record.obatAmount}",
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = "Granular: ${record.granular} kg",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 12.dp),
-                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                        modifier = Modifier.padding(end = 8.dp),
+                        textDecoration = textDeco
                     )
                     Text(
-                        text = "HCL: ${record.hclAmount}",
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = "Tablet: ${record.tablet.toInt()}",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                        modifier = Modifier.padding(end = 8.dp),
+                        textDecoration = textDeco
+                    )
+                    Text(
+                        text = "HCL: ${record.hcl} L",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textDecoration = textDeco
+                    )
+                }
+                Row {
+                    Text(
+                        text = "Trusi: ${record.trusi} kg",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 8.dp),
+                        textDecoration = textDeco
+                    )
+                    Text(
+                        text = "Soda Ash: ${record.sodaAsh} kg",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 8.dp),
+                        textDecoration = textDeco
+                    )
+                    Text(
+                        text = "PAC: ${record.pac} L",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textDecoration = textDeco
                     )
                 }
                 Text(
