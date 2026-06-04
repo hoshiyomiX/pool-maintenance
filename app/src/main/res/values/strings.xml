@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Pool Maintenance</string>
-    <string name="tab_villa">Villa</string>
+    <string name="tab_reminder">Reminder</string>
     <string name="tab_map">Denah</string>
     <string name="tab_stats">Statistik</string>
     <string name="villa_title">Villa %1$d</string>
     <string name="no_data">Belum ada data</string>
     <string name="no_data_period">Tidak ada data untuk periode ini</string>
-    <string name="map_placeholder">Denah akan datang</string>
+    <string name="no_reminders">Tidak ada jadwal hari ini</string>
+    <string name="add_from_map">Tambah jadwal dari tab Denah</string>
     <string name="filter_weekly">Mingguan</string>
     <string name="filter_monthly">Bulanan</string>
     <string name="filter_yearly">Tahunan</string>
@@ -15,6 +16,12 @@
     <string name="hcl_label">HCL</string>
     <string name="check_label">Pengecekan</string>
     <string name="add_record">Tambah Catatan</string>
+    <string name="schedule">Jadwalkan</string>
     <string name="save">Simpan</string>
     <string name="cancel">Batal</string>
+    <string name="completed">Selesai</string>
+    <string name="pending">Pending</string>
+    <string name="line_a_label">Line A (Villa 02 – 26)</string>
+    <string name="line_b_label">Line B (Villa 28 – 49)</string>
+    <string name="partition_label">Partisi</string>
 </resources>

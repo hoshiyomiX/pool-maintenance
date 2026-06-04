@@ -2,7 +2,7 @@ package com.poolmaintenance.app.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material3.Icon
@@ -23,11 +23,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.poolmaintenance.app.R
 import com.poolmaintenance.app.ui.map.MapScreen
+import com.poolmaintenance.app.ui.reminder.ReminderScreen
 import com.poolmaintenance.app.ui.stats.StatsScreen
-import com.poolmaintenance.app.ui.villa.VillaListScreen
 
 sealed class Screen(val route: String) {
-    data object VillaList : Screen("villa_list")
+    data object Reminder : Screen("reminder")
     data object Map : Screen("map")
     data object Stats : Screen("stats")
 }
@@ -39,7 +39,7 @@ data class BottomNavItem(
 )
 
 val bottomNavItems = listOf(
-    BottomNavItem(Screen.VillaList, R.string.tab_villa, Icons.Filled.Home),
+    BottomNavItem(Screen.Reminder, R.string.tab_reminder, Icons.Filled.Notifications),
     BottomNavItem(Screen.Map, R.string.tab_map, Icons.Filled.Map),
     BottomNavItem(Screen.Stats, R.string.tab_stats, Icons.Filled.BarChart)
 )
@@ -74,11 +74,11 @@ fun AppNavigation() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.VillaList.route,
+            startDestination = Screen.Reminder.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Screen.VillaList.route) {
-                VillaListScreen()
+            composable(Screen.Reminder.route) {
+                ReminderScreen()
             }
             composable(Screen.Map.route) {
                 MapScreen()

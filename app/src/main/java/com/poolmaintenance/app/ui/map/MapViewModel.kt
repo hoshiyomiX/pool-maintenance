@@ -1,4 +1,4 @@
-package com.poolmaintenance.app.ui.villa
+package com.poolmaintenance.app.ui.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,21 +11,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class VillaListUiState(
-    val villaNumbers: List<Int> = VillaRepository.VILLA_NUMBERS,
+data class VillaMapUiState(
     val selectedVilla: Int? = null,
-    val records: List<MaintenanceRecord> = emptyList(),
     val showDialog: Boolean = false,
+    val existingRecords: List<MaintenanceRecord> = emptyList(),
     val isLoading: Boolean = false
 )
 
 @HiltViewModel
-class VillaViewModel @Inject constructor(
+class MapViewModel @Inject constructor(
     private val repository: VillaRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(VillaListUiState())
-    val uiState: StateFlow<VillaListUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(VillaMapUiState())
+    val uiState: StateFlow<VillaMapUiState> = _uiState.asStateFlow()
 
     fun selectVilla(villaNumber: Int) {
         _uiState.value = _uiState.value.copy(
@@ -36,7 +35,7 @@ class VillaViewModel @Inject constructor(
         viewModelScope.launch {
             val records = repository.getRecordsForVilla(villaNumber)
             _uiState.value = _uiState.value.copy(
-                records = records,
+                existingRecords = records,
                 isLoading = false
             )
         }
@@ -46,23 +45,31 @@ class VillaViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(
             showDialog = false,
             selectedVilla = null,
-            records = emptyList()
+            existingRecords = emptyList()
         )
     }
 
-    fun addRecord(villaNumber: Int, date: Long, obatAmount: Double, hclAmount: Double, checkStatus: String) {
+    fun scheduleMaintenance(
+        villaNumber: Int,
+        scheduledDate: Long,
+        obatAmount: Double,
+        hclAmount: Double,
+        checkStatus: String
+    ) {
         viewModelScope.launch {
             val record = MaintenanceRecord(
                 villaNumber = villaNumber,
-                date = date,
+                date = System.currentTimeMillis(),
+                scheduledDate = scheduledDate,
                 obatAmount = obatAmount,
                 hclAmount = hclAmount,
-                checkStatus = checkStatus
+                checkStatus = checkStatus,
+                isCompleted = false
             )
             repository.insertRecord(record)
-            // Refresh records for selected villa
+            // Refresh records
             val updatedRecords = repository.getRecordsForVilla(villaNumber)
-            _uiState.value = _uiState.value.copy(records = updatedRecords)
+            _uiState.value = _uiState.value.copy(existingRecords = updatedRecords)
         }
     }
 
@@ -72,7 +79,7 @@ class VillaViewModel @Inject constructor(
             val currentVilla = _uiState.value.selectedVilla
             if (currentVilla != null) {
                 val updatedRecords = repository.getRecordsForVilla(currentVilla)
-                _uiState.value = _uiState.value.copy(records = updatedRecords)
+                _uiState.value = _uiState.value.copy(existingRecords = updatedRecords)
             }
         }
     }

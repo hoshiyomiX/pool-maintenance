@@ -23,7 +23,10 @@ object DatabaseModule {
             context,
             VillaDatabase::class.java,
             "pool_maintenance_db"
-        ).build()
+        )
+            .addMigrations(VillaDatabase.MIGRATION_1_2)
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides

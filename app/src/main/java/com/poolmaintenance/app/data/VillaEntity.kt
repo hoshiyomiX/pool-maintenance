@@ -5,7 +5,7 @@ import androidx.room.PrimaryKey
 
 /**
  * Represents a single pool maintenance record for a villa.
- * Each record captures chemical usage and check status on a specific date.
+ * Each record captures chemical usage, check status, and scheduling information.
  */
 @Entity(tableName = "maintenance_records")
 data class MaintenanceRecord(
@@ -15,7 +15,9 @@ data class MaintenanceRecord(
     val date: Long,
     val obatAmount: Double,
     val hclAmount: Double,
-    val checkStatus: String
+    val checkStatus: String,
+    val scheduledDate: Long = date,
+    val isCompleted: Boolean = false
 )
 
 /**
