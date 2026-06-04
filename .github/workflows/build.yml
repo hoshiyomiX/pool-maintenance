@@ -21,10 +21,9 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Generate Gradle wrapper
-        run: gradle wrapper --gradle-version 8.11.1
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.11.1'
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -56,11 +55,11 @@ jobs:
         if: success()
         run: |
           echo "=== APK Size Comparison ==="
-          DEBUG_SIZE=$(stat -f%z app/build/outputs/apk/debug/app-debug.apk 2>/dev/null || stat -c%s app/build/outputs/apk/debug/app-debug.apk)
-          RELEASE_SIZE=$(stat -f%z app/build/outputs/apk/release/app-release-unsigned.apk 2>/dev/null || stat -c%s app/build/outputs/apk/release/app-release-unsigned.apk)
-          echo "Debug APK:   $(echo "scale=2; $DEBUG_SIZE / 1048576" | bc) MB"
-          echo "Release APK: $(echo "scale=2; $RELEASE_SIZE / 1048576" | bc) MB"
-          echo "Reduction:   $(echo "scale=1; (1 - $RELEASE_SIZE / $DEBUG_SIZE) * 100" | bc)%"
+          DEBUG_SIZE=$(stat -c%s app/build/outputs/apk/debug/app-debug.apk)
+          RELEASE_SIZE=$(stat -c%s app/build/outputs/apk/release/app-release-unsigned.apk)
+          echo "Debug APK:   $(awk \"BEGIN{printf \\\"%.2f\\\", $DEBUG_SIZE/1048576}\") MB"
+          echo "Release APK: $(awk \"BEGIN{printf \\\"%.2f\\\", $RELEASE_SIZE/1048576}\") MB"
+          echo "Reduction:   $(awk \"BEGIN{printf \\\"%.1f\\\", (1-$RELEASE_SIZE/$DEBUG_SIZE)*100}\")%"
 
       - name: Build info
         if: success()
