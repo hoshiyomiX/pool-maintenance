@@ -14,10 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Science
-import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -37,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.poolmaintenance.app.data.VillaStats
+import com.poolmaintenance.app.ui.icons.AppIcons
 
 @Composable
 fun StatsScreen(
@@ -111,21 +108,21 @@ fun StatsScreen(
                 StatCard(
                     title = "Granular (kg)",
                     value = "${uiState.aggregatedStats.totalGranular}",
-                    icon = { Icon(Icons.Filled.Science, contentDescription = "Granular", tint = Color(0xFF1565C0)) },
+                    icon = { Icon(AppIcons.Science, contentDescription = "Granular", tint = Color(0xFF1565C0)) },
                     backgroundColor = Color(0xFFE3F2FD),
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
                     title = "Tablet",
                     value = "${uiState.aggregatedStats.totalTablet.toInt()}",
-                    icon = { Icon(Icons.Filled.Science, contentDescription = "Tablet", tint = Color(0xFF6A1B9A)) },
+                    icon = { Icon(AppIcons.Science, contentDescription = "Tablet", tint = Color(0xFF6A1B9A)) },
                     backgroundColor = Color(0xFFF3E5F5),
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
                     title = "HCL (L)",
                     value = "${uiState.aggregatedStats.totalHcl}",
-                    icon = { Icon(Icons.Filled.WaterDrop, contentDescription = "HCL", tint = Color(0xFF00695C)) },
+                    icon = { Icon(AppIcons.WaterDrop, contentDescription = "HCL", tint = Color(0xFF00695C)) },
                     backgroundColor = Color(0xFFE0F2F1),
                     modifier = Modifier.weight(1f)
                 )
@@ -140,21 +137,21 @@ fun StatsScreen(
                 StatCard(
                     title = "Trusi (kg)",
                     value = "${uiState.aggregatedStats.totalTrusi}",
-                    icon = { Icon(Icons.Filled.Science, contentDescription = "Trusi", tint = Color(0xFFBF360C)) },
+                    icon = { Icon(AppIcons.Science, contentDescription = "Trusi", tint = Color(0xFFBF360C)) },
                     backgroundColor = Color(0xFFFBE9E7),
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
                     title = "Soda Ash (kg)",
                     value = "${uiState.aggregatedStats.totalSodaAsh}",
-                    icon = { Icon(Icons.Filled.Science, contentDescription = "Soda Ash", tint = Color(0xFFE65100)) },
+                    icon = { Icon(AppIcons.Science, contentDescription = "Soda Ash", tint = Color(0xFFE65100)) },
                     backgroundColor = Color(0xFFFFF3E0),
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
                     title = "PAC (L)",
                     value = "${uiState.aggregatedStats.totalPac}",
-                    icon = { Icon(Icons.Filled.WaterDrop, contentDescription = "PAC", tint = Color(0xFF0277BD)) },
+                    icon = { Icon(AppIcons.WaterDrop, contentDescription = "PAC", tint = Color(0xFF0277BD)) },
                     backgroundColor = Color(0xFFE1F5FE),
                     modifier = Modifier.weight(1f)
                 )

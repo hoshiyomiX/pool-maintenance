@@ -15,11 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Pool
-import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,6 +36,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.poolmaintenance.app.data.MaintenanceRecord
+import com.poolmaintenance.app.ui.icons.AppIcons
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -193,7 +190,7 @@ fun ReminderCard(
                 modifier = Modifier.size(36.dp)
             ) {
                 Icon(
-                    imageVector = if (isCompleted) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
+                    imageVector = if (isCompleted) AppIcons.CheckCircle else AppIcons.CircleOutlined,
                     contentDescription = if (isCompleted) "Selesai" else "Belum selesai",
                     tint = statusIconTint,
                     modifier = Modifier.size(28.dp)
@@ -208,7 +205,7 @@ fun ReminderCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Pool,
+                        imageVector = AppIcons.Pool,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
@@ -284,7 +281,7 @@ fun ReminderCard(
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Delete,
+                    imageVector = AppIcons.Delete,
                     contentDescription = "Hapus",
                     tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
                     modifier = Modifier.size(20.dp)

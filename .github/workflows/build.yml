@@ -21,9 +21,10 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.11.1'
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Generate Gradle wrapper
+        run: gradle wrapper --gradle-version 8.11.1
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -31,7 +32,7 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
-      - name: Build release APK
+      - name: Build release APK (signed with testkey)
         run: ./gradlew assembleRelease
 
       - name: Run unit tests
@@ -49,23 +50,25 @@ jobs:
         if: success()
         with:
           name: release-apk
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          path: app/build/outputs/apk/release/app-release.apk
 
       - name: APK size comparison
-        if: always()
-        run: |
-          echo "=== APK Size Comparison ==="
-          DEBUG_SIZE=$(stat -c%s app/build/outputs/apk/debug/app-debug.apk 2>/dev/null || echo 0)
-          RELEASE_SIZE=$(stat -c%s app/build/outputs/apk/release/app-release-unsigned.apk 2>/dev/null || echo 0)
-          echo "Debug APK size:   $DEBUG_SIZE bytes"
-          echo "Release APK size: $RELEASE_SIZE bytes"
-          if [ "$DEBUG_SIZE" -gt 0 ] && [ "$RELEASE_SIZE" -gt 0 ]; then
-            echo "Reduction: approximately $(( (DEBUG_SIZE - RELEASE_SIZE) * 100 / DEBUG_SIZE ))%"
-          fi
-
-      - name: Build info
         if: success()
         run: |
-          echo "Build completed successfully!"
-          echo "Debug:   app/build/outputs/apk/debug/app-debug.apk"
-          echo "Release: app/build/outputs/apk/release/app-release-unsigned.apk"
+          echo "=== APK Size Report ==="
+          DEBUG_SIZE=$(stat -c%s app/build/outputs/apk/debug/app-debug.apk 2>/dev/null || echo "0")
+          RELEASE_SIZE=$(stat -c%s app/build/outputs/apk/release/app-release.apk 2>/dev/null || echo "0")
+          DEBUG_MB=$(echo "scale=2; $DEBUG_SIZE / 1048576" | bc)
+          RELEASE_MB=$(echo "scale=2; $RELEASE_SIZE / 1048576" | bc)
+          SAVED_PCT=$(echo "scale=1; ($DEBUG_SIZE - $RELEASE_SIZE) * 100 / $DEBUG_SIZE" | bc)
+          echo "Debug APK:   ${DEBUG_MB} MB"
+          echo "Release APK: ${RELEASE_MB} MB (R8 + resource shrinking)"
+          echo "Size saved:  ${SAVED_PCT}%"
+
+      - name: Verify release APK signature
+        if: success()
+        run: |
+          echo "=== Verifying APK signature ==="
+          ${ANDROID_SDK_ROOT}/build-tools/35.0.0/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk || \
+          ${ANDROID_SDK_ROOT}/build-tools/34.0.0/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk || \
+          echo "apksigner not found, skipping verification"

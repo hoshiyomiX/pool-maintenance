@@ -22,8 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Pool
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -58,6 +56,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.poolmaintenance.app.R
 import com.poolmaintenance.app.data.MaintenanceRecord
 import com.poolmaintenance.app.data.VillaRepository
+import com.poolmaintenance.app.ui.icons.AppIcons
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -252,7 +251,7 @@ fun VillaCell(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Pool,
+                    imageVector = AppIcons.Pool,
                     contentDescription = null,
                     tint = Color(0xFF01579B).copy(alpha = 0.6f),
                     modifier = Modifier.size(10.dp)
@@ -272,7 +271,7 @@ fun VillaCell(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Pool,
+                    imageVector = AppIcons.Pool,
                     contentDescription = null,
                     tint = Color(0xFF01579B).copy(alpha = 0.6f),
                     modifier = Modifier.size(10.dp)
@@ -388,7 +387,7 @@ fun ScheduleDialog(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Filled.Pool,
+                    imageVector = AppIcons.Pool,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -642,7 +641,7 @@ fun ScheduleRecordItem(
                     Spacer(modifier = Modifier.width(4.dp))
                     IconButton(onClick = onDelete, modifier = Modifier.size(20.dp)) {
                         Icon(
-                            imageVector = Icons.Filled.Delete,
+                            imageVector = AppIcons.Delete,
                             contentDescription = "Hapus",
                             tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
                             modifier = Modifier.size(14.dp)

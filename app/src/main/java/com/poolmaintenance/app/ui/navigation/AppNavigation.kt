@@ -3,8 +3,6 @@ package com.poolmaintenance.app.ui.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -22,6 +20,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.poolmaintenance.app.R
+import com.poolmaintenance.app.ui.icons.AppIcons
 import com.poolmaintenance.app.ui.map.MapScreen
 import com.poolmaintenance.app.ui.reminder.ReminderScreen
 import com.poolmaintenance.app.ui.stats.StatsScreen
@@ -40,8 +39,8 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem(Screen.Reminder, R.string.tab_reminder, Icons.Filled.Notifications),
-    BottomNavItem(Screen.Map, R.string.tab_map, Icons.Filled.Map),
-    BottomNavItem(Screen.Stats, R.string.tab_stats, Icons.Filled.BarChart)
+    BottomNavItem(Screen.Map, R.string.tab_map, AppIcons.Map),
+    BottomNavItem(Screen.Stats, R.string.tab_stats, AppIcons.BarChart)
 )
 
 @Composable
