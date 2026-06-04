@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -29,6 +30,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +51,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -59,6 +60,11 @@ import com.poolmaintenance.app.data.VillaRepository
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+// Denah layout constants
+private val CELL_WIDTH = 52.dp
+private val CELL_SPACING = 3.dp
+private val SLOT_WIDTH = CELL_WIDTH + CELL_SPACING // 55.dp per villa slot
 
 @Composable
 fun MapScreen(
@@ -91,54 +97,67 @@ fun MapScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Denah area — scrollable horizontally for many villas
-        Column(
+        // Denah — unified single scroll (pan entire map as one)
+        Card(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+                .fillMaxWidth()
+                .weight(1f),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            // Line A label
-            Text(
-                text = "Line A (Villa 02 – 26)",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
-            )
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .horizontalScroll(rememberScrollState())
+                    .padding(8.dp)
+            ) {
+                // Line A — pools face DOWN toward partition (no label)
+                VillaLineRow(
+                    villaNumbers = VillaRepository.LINE_A,
+                    poolDirection = PoolDirection.FACING_DOWN,
+                    startOffset = 0,
+                    onVillaClick = { viewModel.selectVilla(it) }
+                )
 
-            // Line A — Villa row (pools face DOWN toward partition)
-            VillaLineRow(
-                villaNumbers = VillaRepository.LINE_A,
-                poolDirection = PoolDirection.FACING_DOWN,
-                onVillaClick = { viewModel.selectVilla(it) }
-            )
+                // Net partition between Line A and Line B (thin — just a net)
+                NetPartition()
 
-            // Partition divider between Line A and Line B
-            PartitionDivider()
+                // Line B — pools face UP toward partition (no label)
+                // Offset 3 so V49 aligns with V26
+                VillaLineRow(
+                    villaNumbers = VillaRepository.LINE_B,
+                    poolDirection = PoolDirection.FACING_UP,
+                    startOffset = 3,
+                    onVillaClick = { viewModel.selectVilla(it) }
+                )
 
-            // Line B label
-            Text(
-                text = "Line B (Villa 28 – 49)",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
-            )
+                // Separator between Line B and Line C
+                Spacer(modifier = Modifier.height(6.dp))
+                HorizontalDivider(
+                    thickness = 1.dp,
+                    color = Color(0xFF795548).copy(alpha = 0.3f)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
 
-            // Line B — Villa row (pools face UP toward partition)
-            VillaLineRow(
-                villaNumbers = VillaRepository.LINE_B,
-                poolDirection = PoolDirection.FACING_UP,
-                onVillaClick = { viewModel.selectVilla(it) }
-            )
+                // Line C — pools face DOWN like Line A (no label)
+                // Offset 5 so V50 aligns with V30
+                VillaLineRow(
+                    villaNumbers = VillaRepository.LINE_C,
+                    poolDirection = PoolDirection.FACING_DOWN,
+                    startOffset = 5,
+                    onVillaClick = { viewModel.selectVilla(it) }
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-            // Legend
-            LegendSection()
+                // Legend
+                LegendSection()
+            }
         }
     }
 
@@ -159,20 +178,25 @@ fun MapScreen(
 
 enum class PoolDirection { FACING_DOWN, FACING_UP }
 
+/**
+ * A single horizontal row of villa cells.
+ * [startOffset] shifts the row right by N villa positions for alignment.
+ */
 @Composable
 fun VillaLineRow(
     villaNumbers: List<Int>,
     poolDirection: PoolDirection,
+    startOffset: Int = 0,
     onVillaClick: (Int) -> Unit
 ) {
-    val scrollState = rememberScrollState()
-
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(scrollState),
-        horizontalArrangement = Arrangement.spacedBy(3.dp)
+        horizontalArrangement = Arrangement.spacedBy(CELL_SPACING)
     ) {
+        // Alignment offset spacer
+        if (startOffset > 0) {
+            // Account for the spacing that Arrangement.spacedBy adds after the Spacer
+            Spacer(modifier = Modifier.width(SLOT_WIDTH * startOffset - CELL_SPACING))
+        }
         villaNumbers.forEach { villaNum ->
             VillaCell(
                 villaNumber = villaNum,
@@ -199,13 +223,12 @@ fun VillaCell(
 
     Column(
         modifier = Modifier
-            .width(52.dp)
+            .width(CELL_WIDTH)
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (poolDirection == PoolDirection.FACING_DOWN) {
             // Villa unit on top, pool below facing the partition
-            // Villa unit
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -226,7 +249,6 @@ fun VillaCell(
                     textAlign = TextAlign.Center
                 )
             }
-            // Pool (facing down toward partition)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -248,7 +270,6 @@ fun VillaCell(
             }
         } else {
             // Pool on top facing up toward partition, villa unit below
-            // Pool (facing up toward partition)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -268,7 +289,6 @@ fun VillaCell(
                     modifier = Modifier.size(10.dp)
                 )
             }
-            // Villa unit
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -293,41 +313,18 @@ fun VillaCell(
     }
 }
 
+/**
+ * Thin net partition between Line A and Line B.
+ * Just 1dp — represents a net divider between facing pools.
+ */
 @Composable
-fun PartitionDivider() {
-    Column(
+fun NetPartition() {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(4.dp)
-                .background(
-                    color = Color(0xFF795548).copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(2.dp)
-                )
-        )
-        Text(
-            text = "━━━ Partisi ━━━",
-            fontSize = 8.sp,
-            color = Color(0xFF795548).copy(alpha = 0.8f),
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(4.dp)
-                .background(
-                    color = Color(0xFF795548).copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(2.dp)
-                )
-        )
-    }
+            .height(1.dp)
+            .background(Color(0xFF795548).copy(alpha = 0.5f))
+    )
 }
 
 @Composable
@@ -362,10 +359,10 @@ fun LegendSection() {
                 Box(
                     modifier = Modifier
                         .size(12.dp)
-                        .background(Color(0xFF795548).copy(alpha = 0.6f), RoundedCornerShape(2.dp))
+                        .background(Color(0xFF795548).copy(alpha = 0.5f), RoundedCornerShape(2.dp))
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Partisi pembatas pool", style = MaterialTheme.typography.labelSmall)
+                Text("Sekat net", style = MaterialTheme.typography.labelSmall)
             }
             Spacer(modifier = Modifier.height(2.dp))
             Text(

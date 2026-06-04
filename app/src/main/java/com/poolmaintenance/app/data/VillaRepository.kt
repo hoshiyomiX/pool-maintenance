@@ -91,16 +91,23 @@ class VillaRepository @Inject constructor(
 
         /**
          * Line B: Villa 28 to Villa 49 (22 villas).
-         * Lower horizontal row, pools facing up toward partition.
-         * Line A and Line B pools face each other, separated by a partition.
+         * Middle horizontal row, pools facing up toward Line A partition.
+         * Offset 3 villa positions so V49 aligns with V26.
          */
         val LINE_B: List<Int> = (28..49).toList()
 
         /**
-         * All villa numbers on the denah (map).
-         * Total: 47 villas (25 + 22).
+         * Line C: Villa 50 to Villa 63 (14 villas).
+         * Lower horizontal row, pools facing down (same as Line A).
+         * Offset 5 villa positions so V50 aligns with V30.
          */
-        val MAP_VILLA_NUMBERS: List<Int> = LINE_A + LINE_B
+        val LINE_C: List<Int> = (50..63).toList()
+
+        /**
+         * All villa numbers on the denah (map).
+         * Total: 61 villas (25 + 22 + 14).
+         */
+        val MAP_VILLA_NUMBERS: List<Int> = LINE_A + LINE_B + LINE_C
 
         /**
          * Legacy: All valid villa numbers (1-63 excluding 2 and 27).

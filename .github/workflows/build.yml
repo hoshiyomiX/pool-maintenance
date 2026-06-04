@@ -32,6 +32,9 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
+      - name: Build release APK
+        run: ./gradlew assembleRelease
+
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest || true
 
@@ -42,8 +45,26 @@ jobs:
           name: debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
 
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: release-apk
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: APK size comparison
+        if: success()
+        run: |
+          echo "=== APK Size Comparison ==="
+          DEBUG_SIZE=$(stat -f%z app/build/outputs/apk/debug/app-debug.apk 2>/dev/null || stat -c%s app/build/outputs/apk/debug/app-debug.apk)
+          RELEASE_SIZE=$(stat -f%z app/build/outputs/apk/release/app-release-unsigned.apk 2>/dev/null || stat -c%s app/build/outputs/apk/release/app-release-unsigned.apk)
+          echo "Debug APK:   $(echo "scale=2; $DEBUG_SIZE / 1048576" | bc) MB"
+          echo "Release APK: $(echo "scale=2; $RELEASE_SIZE / 1048576" | bc) MB"
+          echo "Reduction:   $(echo "scale=1; (1 - $RELEASE_SIZE / $DEBUG_SIZE) * 100" | bc)%"
+
       - name: Build info
         if: success()
         run: |
           echo "Build completed successfully!"
-          echo "APK: app/build/outputs/apk/debug/app-debug.apk"
+          echo "Debug:   app/build/outputs/apk/debug/app-debug.apk"
+          echo "Release: app/build/outputs/apk/release/app-release-unsigned.apk"
