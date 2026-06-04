@@ -52,14 +52,16 @@ jobs:
           path: app/build/outputs/apk/release/app-release-unsigned.apk
 
       - name: APK size comparison
-        if: success()
+        if: always()
         run: |
           echo "=== APK Size Comparison ==="
-          DEBUG_SIZE=$(stat -c%s app/build/outputs/apk/debug/app-debug.apk)
-          RELEASE_SIZE=$(stat -c%s app/build/outputs/apk/release/app-release-unsigned.apk)
-          echo "Debug APK:   $(awk \"BEGIN{printf \\\"%.2f\\\", $DEBUG_SIZE/1048576}\") MB"
-          echo "Release APK: $(awk \"BEGIN{printf \\\"%.2f\\\", $RELEASE_SIZE/1048576}\") MB"
-          echo "Reduction:   $(awk \"BEGIN{printf \\\"%.1f\\\", (1-$RELEASE_SIZE/$DEBUG_SIZE)*100}\")%"
+          DEBUG_SIZE=$(stat -c%s app/build/outputs/apk/debug/app-debug.apk 2>/dev/null || echo 0)
+          RELEASE_SIZE=$(stat -c%s app/build/outputs/apk/release/app-release-unsigned.apk 2>/dev/null || echo 0)
+          echo "Debug APK size:   $DEBUG_SIZE bytes"
+          echo "Release APK size: $RELEASE_SIZE bytes"
+          if [ "$DEBUG_SIZE" -gt 0 ] && [ "$RELEASE_SIZE" -gt 0 ]; then
+            echo "Reduction: approximately $(( (DEBUG_SIZE - RELEASE_SIZE) * 100 / DEBUG_SIZE ))%"
+          fi
 
       - name: Build info
         if: success()
