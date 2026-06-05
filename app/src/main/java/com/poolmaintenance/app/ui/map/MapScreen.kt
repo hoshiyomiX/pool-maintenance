@@ -20,8 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -256,7 +254,7 @@ fun LegendSection() {
     }
 }
 
-// ========== Schedule Dialog — 3 type buttons instead of TabRow ==========
+// ========== Schedule Dialog — vertical list of 3 schedule types ==========
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -289,11 +287,6 @@ fun ScheduleDialog(
     var showDatePicker by remember { mutableStateOf(false) }
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")) }
 
-    // Schedule type button colors
-    val monitoringColor = Color(0xFF1565C0)
-    val treatmentColor = Color(0xFF6A1B9A)
-    val deepColor = Color(0xFFBF360C)
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -318,21 +311,16 @@ fun ScheduleDialog(
                             color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
-                                // Type badge at top
-                                val typeColor = when (selectedScheduleType) {
-                                    ScheduleType.MONITORING -> monitoringColor
-                                    ScheduleType.TREATMENT_MINGGUAN -> treatmentColor
-                                    else -> deepColor
-                                }
+                                // Type badge at top — uses theme colors only
                                 Surface(
                                     shape = RoundedCornerShape(4.dp),
-                                    color = typeColor.copy(alpha = 0.15f)
+                                    color = MaterialTheme.colorScheme.primaryContainer
                                 ) {
                                     Text(
                                         text = selectedScheduleType!!,
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = typeColor,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
                                 }
@@ -441,37 +429,25 @@ fun ScheduleDialog(
         },
         confirmButton = {
             if (selectedScheduleType == null) {
-                // 3 schedule type buttons — replaces the old single "+ Jadwalkan"
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    // Monitoring
+                // Vertical list of 3 schedule type options — no icons, no custom colors
+                Column(modifier = Modifier.fillMaxWidth()) {
                     TextButton(
                         onClick = { selectedScheduleType = ScheduleType.MONITORING },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(imageVector = Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = monitoringColor)
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Text("Monitor", style = MaterialTheme.typography.labelSmall, color = monitoringColor)
+                        Text("Monitoring")
                     }
-                    // Treatment Mingguan
                     TextButton(
                         onClick = { selectedScheduleType = ScheduleType.TREATMENT_MINGGUAN },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(imageVector = Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = treatmentColor)
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Text("Trt. Mingguan", style = MaterialTheme.typography.labelSmall, color = treatmentColor)
+                        Text("Treatment Mingguan")
                     }
-                    // Deep Treatment
                     TextButton(
                         onClick = { selectedScheduleType = ScheduleType.DEEP_TREATMENT },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(imageVector = Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = deepColor)
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Text("Deep Trt.", style = MaterialTheme.typography.labelSmall, color = deepColor)
+                        Text("Deep Treatment")
                     }
                 }
             }
@@ -569,13 +545,6 @@ fun ScheduleRecordItem(
     dateFormatter: SimpleDateFormat,
     onDelete: () -> Unit
 ) {
-    val typeColor = when (record.scheduleType) {
-        ScheduleType.MONITORING -> Color(0xFF1565C0)
-        ScheduleType.TREATMENT_MINGGUAN -> Color(0xFF6A1B9A)
-        ScheduleType.DEEP_TREATMENT -> Color(0xFFBF360C)
-        else -> Color(0xFF757575)
-    }
-
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
         colors = CardDefaults.cardColors(
@@ -592,16 +561,16 @@ fun ScheduleRecordItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Schedule type badge
+                    // Schedule type badge — uses theme colors
                     Surface(
                         shape = RoundedCornerShape(4.dp),
-                        color = typeColor.copy(alpha = 0.15f)
+                        color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(
                             text = record.scheduleType,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = typeColor,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
