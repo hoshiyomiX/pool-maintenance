@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -277,11 +278,11 @@ fun ScheduleDialog(
     var pacInput by remember { mutableStateOf("") }
     var tesPhInput by remember { mutableStateOf("") }
     var tesChlorineInput by remember { mutableStateOf("") }
-    // Treatment Mingguan fields
-    var vakumInput by remember { mutableStateOf("") }
-    var brushingInput by remember { mutableStateOf("") }
-    // Deep Treatment fields
-    var kurasBalancingInput by remember { mutableStateOf("") }
+    // Treatment Mingguan fields — checklist
+    var vakumInput by remember { mutableStateOf(false) }
+    var brushingInput by remember { mutableStateOf(false) }
+    // Deep Treatment fields — checklist
+    var kurasBalancingInput by remember { mutableStateOf(false) }
     var checkStatus by remember { mutableStateOf("Sudah Dicek") }
     var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -363,8 +364,8 @@ fun ScheduleDialog(
                                         granularInput = ""; tabletInput = ""; hclInput = ""
                                         trusiInput = ""; sodaAshInput = ""; pacInput = ""
                                         tesPhInput = ""; tesChlorineInput = ""
-                                        vakumInput = ""; brushingInput = ""
-                                        kurasBalancingInput = ""
+                                        vakumInput = false; brushingInput = false
+                                        kurasBalancingInput = false
                                     }) {
                                         Text(stringResource(R.string.cancel))
                                     }
@@ -379,17 +380,17 @@ fun ScheduleDialog(
                                             pacInput.toDoubleOrNull() ?: 0.0,
                                             tesPhInput.toDoubleOrNull() ?: 0.0,
                                             tesChlorineInput.toDoubleOrNull() ?: 0.0,
-                                            vakumInput.toDoubleOrNull() ?: 0.0,
-                                            brushingInput.toDoubleOrNull() ?: 0.0,
-                                            kurasBalancingInput.toDoubleOrNull() ?: 0.0,
+                                            if (vakumInput) 1.0 else 0.0,
+                                            if (brushingInput) 1.0 else 0.0,
+                                            if (kurasBalancingInput) 1.0 else 0.0,
                                             checkStatus
                                         )
                                         selectedScheduleType = null
                                         granularInput = ""; tabletInput = ""; hclInput = ""
                                         trusiInput = ""; sodaAshInput = ""; pacInput = ""
                                         tesPhInput = ""; tesChlorineInput = ""
-                                        vakumInput = ""; brushingInput = ""
-                                        kurasBalancingInput = ""
+                                        vakumInput = false; brushingInput = false
+                                        kurasBalancingInput = false
                                     }) {
                                         Text(stringResource(R.string.save))
                                     }
@@ -512,30 +513,40 @@ fun MonitoringFields(
     }
 }
 
-// ========== Treatment Mingguan fields: Vakum, Brushing ==========
+// ========== Treatment Mingguan fields: Vakum, Brushing — checklist ==========
 @Composable
 fun TreatmentMingguanFields(
-    vakum: String, onVakum: (String) -> Unit,
-    brushing: String, onBrushing: (String) -> Unit
+    vakum: Boolean, onVakum: (Boolean) -> Unit,
+    brushing: Boolean, onBrushing: (Boolean) -> Unit
 ) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(value = vakum, onValueChange = onVakum, label = { Text("Vakum (jam)") }, modifier = Modifier.weight(1f), singleLine = true)
-        OutlinedTextField(value = brushing, onValueChange = onBrushing, label = { Text("Brushing (jam)") }, modifier = Modifier.weight(1f), singleLine = true)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(checked = vakum, onCheckedChange = onVakum)
+        Text("Vakum", style = MaterialTheme.typography.bodyLarge)
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(checked = brushing, onCheckedChange = onBrushing)
+        Text("Brushing", style = MaterialTheme.typography.bodyLarge)
     }
 }
 
-// ========== Deep Treatment fields: Kuras Balancing ==========
+// ========== Deep Treatment fields: Kuras Balancing — checklist ==========
 @Composable
 fun DeepTreatmentFields(
-    kurasBalancing: String, onKurasBalancing: (String) -> Unit
+    kurasBalancing: Boolean, onKurasBalancing: (Boolean) -> Unit
 ) {
-    OutlinedTextField(
-        value = kurasBalancing,
-        onValueChange = onKurasBalancing,
-        label = { Text("Kuras Balancing (liter)") },
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        singleLine = true
-    )
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(checked = kurasBalancing, onCheckedChange = onKurasBalancing)
+        Text("Kuras Balancing", style = MaterialTheme.typography.bodyLarge)
+    }
 }
 
 // ========== Record item with schedule type badge ==========
@@ -617,14 +628,14 @@ fun ScheduleRecordItem(
                 }
                 ScheduleType.TREATMENT_MINGGUAN -> {
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        ChemLabel("Vakum", "${record.vakum} jam")
+                        CheckLabel("Vakum", record.vakum > 0.0)
                         Spacer(modifier = Modifier.width(6.dp))
-                        ChemLabel("Brushing", "${record.brushing} jam")
+                        CheckLabel("Brushing", record.brushing > 0.0)
                     }
                 }
                 ScheduleType.DEEP_TREATMENT -> {
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        ChemLabel("Kuras Balancing", "${record.kurasBalancing} L")
+                        CheckLabel("Kuras Balancing", record.kurasBalancing > 0.0)
                     }
                 }
             }
@@ -636,6 +647,16 @@ fun ScheduleRecordItem(
 fun ChemLabel(name: String, value: String) {
     Text(
         text = "$name: $value",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textDecoration = TextDecoration.None
+    )
+}
+
+@Composable
+fun CheckLabel(name: String, checked: Boolean) {
+    Text(
+        text = "$name: ${if (checked) "Ya" else "\u2014"}",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textDecoration = TextDecoration.None

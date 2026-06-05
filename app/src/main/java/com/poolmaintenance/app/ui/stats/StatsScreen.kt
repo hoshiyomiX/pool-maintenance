@@ -97,9 +97,9 @@ fun StatsScreen(
             Text(text = "Treatment", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6A1B9A), modifier = Modifier.padding(horizontal = 16.dp))
             Spacer(modifier = Modifier.height(4.dp))
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                StatCard("Vakum (jam)", "${uiState.aggregatedStats.totalVakum}", { Icon(AppIcons.Science, null, tint = Color(0xFF6A1B9A)) }, Color(0xFFF3E5F5), Modifier.weight(1f))
-                StatCard("Brushing (jam)", "${uiState.aggregatedStats.totalBrushing}", { Icon(AppIcons.Science, null, tint = Color(0xFF6A1B9A)) }, Color(0xFFF3E5F5), Modifier.weight(1f))
-                StatCard("Kuras (L)", "${uiState.aggregatedStats.totalKurasBalancing}", { Icon(AppIcons.WaterDrop, null, tint = Color(0xFFBF360C)) }, Color(0xFFFBE9E7), Modifier.weight(1f))
+                StatCard("Vakum", "${uiState.aggregatedStats.totalVakum}", { Icon(AppIcons.Science, null, tint = Color(0xFF6A1B9A)) }, Color(0xFFF3E5F5), Modifier.weight(1f))
+                StatCard("Brushing", "${uiState.aggregatedStats.totalBrushing}", { Icon(AppIcons.Science, null, tint = Color(0xFF6A1B9A)) }, Color(0xFFF3E5F5), Modifier.weight(1f))
+                StatCard("Kuras", "${uiState.aggregatedStats.totalKurasBalancing}", { Icon(AppIcons.WaterDrop, null, tint = Color(0xFFBF360C)) }, Color(0xFFFBE9E7), Modifier.weight(1f))
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -155,9 +155,9 @@ fun VillaStatRow(stat: VillaStats) {
             }
             Spacer(modifier = Modifier.height(2.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                ChemStat("Vakum", "${stat.totalVakum} jam", Color(0xFF6A1B9A))
-                ChemStat("Brushing", "${stat.totalBrushing} jam", Color(0xFF6A1B9A))
-                ChemStat("Kuras", "${stat.totalKurasBalancing} L", Color(0xFFBF360C))
+                ChemStat("Vakum", "${stat.totalVakum.toInt()}x", Color(0xFF6A1B9A))
+                ChemStat("Brushing", "${stat.totalBrushing.toInt()}x", Color(0xFF6A1B9A))
+                ChemStat("Kuras", "${stat.totalKurasBalancing.toInt()}x", Color(0xFFBF360C))
             }
         }
     }

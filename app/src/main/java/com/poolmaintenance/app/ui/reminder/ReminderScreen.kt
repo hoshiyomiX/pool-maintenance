@@ -171,12 +171,12 @@ fun ReminderCard(
                     }
                     ScheduleType.TREATMENT_MINGGUAN -> {
                         Row {
-                            Text(text = "Vakum: ${record.vakum} jam", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp), textDecoration = textDeco)
-                            Text(text = "Brushing: ${record.brushing} jam", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textDecoration = textDeco)
+                            Text(text = "Vakum: ${if (record.vakum > 0.0) "Ya" else "\u2014"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 8.dp), textDecoration = textDeco)
+                            Text(text = "Brushing: ${if (record.brushing > 0.0) "Ya" else "\u2014"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textDecoration = textDeco)
                         }
                     }
                     ScheduleType.DEEP_TREATMENT -> {
-                        Text(text = "Kuras Balancing: ${record.kurasBalancing} L", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textDecoration = textDeco)
+                        Text(text = "Kuras Balancing: ${if (record.kurasBalancing > 0.0) "Ya" else "\u2014"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textDecoration = textDeco)
                     }
                 }
                 Text(
