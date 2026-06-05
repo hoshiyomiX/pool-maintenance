@@ -30,11 +30,17 @@
 -keep class androidx.navigation.** { *; }
 -dontwarn androidx.navigation.**
 
+# ── WorkManager ──────────────────────────────────────────
+-keep class androidx.work.** { *; }
+-dontwarn androidx.work.**
+
 # ── App-specific ───────────────────────────────────────────
 -keep class com.poolmaintenance.app.data.** { *; }
 -keep class com.poolmaintenance.app.di.** { *; }
 -keep class com.poolmaintenance.app.PoolMaintenanceApp { *; }
 -keep class com.poolmaintenance.app.MainActivity { *; }
+-keep class com.poolmaintenance.app.worker.** { *; }
+-keep class com.poolmaintenance.app.notification.** { *; }
 
 # ── General optimizations ─────────────────────────────────
 -optimizationpasses 5

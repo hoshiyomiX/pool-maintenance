@@ -6,12 +6,13 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [MaintenanceRecord::class],
-    version = 4,
+    entities = [MaintenanceRecord::class, Schedule::class],
+    version = 5,
     exportSchema = false
 )
 abstract class VillaDatabase : RoomDatabase() {
     abstract fun villaDao(): VillaDao
+    abstract fun scheduleDao(): ScheduleDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -48,6 +49,32 @@ abstract class VillaDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE maintenance_records ADD COLUMN vakum REAL NOT NULL DEFAULT 0.0")
                 db.execSQL("ALTER TABLE maintenance_records ADD COLUMN brushing REAL NOT NULL DEFAULT 0.0")
                 db.execSQL("ALTER TABLE maintenance_records ADD COLUMN kurasBalancing REAL NOT NULL DEFAULT 0.0")
+            }
+        }
+
+        /**
+         * Migration from v4 to v5:
+         * - Add scheduleId column to maintenance_records (default 0 = no schedule)
+         * - Create schedules table for recurring schedule tracking
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Add scheduleId to existing records
+                db.execSQL("ALTER TABLE maintenance_records ADD COLUMN scheduleId INTEGER NOT NULL DEFAULT 0")
+
+                // Create schedules table
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS schedules (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        villaNumber INTEGER NOT NULL,
+                        scheduleType TEXT NOT NULL,
+                        startDate INTEGER NOT NULL,
+                        nextDueDate INTEGER NOT NULL,
+                        recurrenceRule TEXT NOT NULL,
+                        isActive INTEGER NOT NULL DEFAULT 1,
+                        createdAt INTEGER NOT NULL
+                    )
+                """)
             }
         }
     }

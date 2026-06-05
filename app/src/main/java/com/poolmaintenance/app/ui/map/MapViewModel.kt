@@ -3,6 +3,8 @@ package com.poolmaintenance.app.ui.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.poolmaintenance.app.data.MaintenanceRecord
+import com.poolmaintenance.app.data.RecurrenceRule
+import com.poolmaintenance.app.data.Schedule
 import com.poolmaintenance.app.data.VillaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +17,7 @@ data class VillaMapUiState(
     val selectedVilla: Int? = null,
     val showDialog: Boolean = false,
     val existingRecords: List<MaintenanceRecord> = emptyList(),
+    val existingSchedules: List<Schedule> = emptyList(),
     val isLoading: Boolean = false
 )
 
@@ -34,8 +37,10 @@ class MapViewModel @Inject constructor(
         )
         viewModelScope.launch {
             val records = repository.getRecordsForVilla(villaNumber)
+            val schedules = repository.getSchedulesForVilla(villaNumber)
             _uiState.value = _uiState.value.copy(
                 existingRecords = records,
+                existingSchedules = schedules,
                 isLoading = false
             )
         }
@@ -45,7 +50,8 @@ class MapViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(
             showDialog = false,
             selectedVilla = null,
-            existingRecords = emptyList()
+            existingRecords = emptyList(),
+            existingSchedules = emptyList()
         )
     }
 
@@ -67,11 +73,26 @@ class MapViewModel @Inject constructor(
         checkStatus: String
     ) {
         viewModelScope.launch {
+            // Create the recurring schedule
+            val recurrenceRule = repository.getRecurrenceRule(scheduleType)
+            val nextDueDate = repository.calculateNextDueDate(scheduledDate, recurrenceRule)
+
+            val schedule = Schedule(
+                villaNumber = villaNumber,
+                scheduleType = scheduleType,
+                startDate = scheduledDate,
+                nextDueDate = nextDueDate,
+                recurrenceRule = recurrenceRule
+            )
+            val scheduleId = repository.insertSchedule(schedule)
+
+            // Create the first MaintenanceRecord with user's data
             val record = MaintenanceRecord(
                 villaNumber = villaNumber,
                 date = System.currentTimeMillis(),
                 scheduledDate = scheduledDate,
                 scheduleType = scheduleType,
+                scheduleId = scheduleId,
                 granular = granular,
                 tablet = tablet,
                 hcl = hcl,
@@ -84,11 +105,16 @@ class MapViewModel @Inject constructor(
                 brushing = brushing,
                 kurasBalancing = kurasBalancing,
                 checkStatus = checkStatus,
-                isCompleted = false
+                isCompleted = true
             )
             repository.insertRecord(record)
+
             val updatedRecords = repository.getRecordsForVilla(villaNumber)
-            _uiState.value = _uiState.value.copy(existingRecords = updatedRecords)
+            val updatedSchedules = repository.getSchedulesForVilla(villaNumber)
+            _uiState.value = _uiState.value.copy(
+                existingRecords = updatedRecords,
+                existingSchedules = updatedSchedules
+            )
         }
     }
 
@@ -99,6 +125,17 @@ class MapViewModel @Inject constructor(
             if (currentVilla != null) {
                 val updatedRecords = repository.getRecordsForVilla(currentVilla)
                 _uiState.value = _uiState.value.copy(existingRecords = updatedRecords)
+            }
+        }
+    }
+
+    fun deleteSchedule(id: Long) {
+        viewModelScope.launch {
+            repository.deactivateSchedule(id)
+            val currentVilla = _uiState.value.selectedVilla
+            if (currentVilla != null) {
+                val updatedSchedules = repository.getSchedulesForVilla(currentVilla)
+                _uiState.value = _uiState.value.copy(existingSchedules = updatedSchedules)
             }
         }
     }

@@ -29,6 +29,7 @@ data class MaintenanceRecord(
     val date: Long,
     val scheduledDate: Long = date,
     val scheduleType: String = ScheduleType.MONITORING,
+    val scheduleId: Long = 0,
     val checkStatus: String,
     val isCompleted: Boolean = false,
     // Monitoring fields

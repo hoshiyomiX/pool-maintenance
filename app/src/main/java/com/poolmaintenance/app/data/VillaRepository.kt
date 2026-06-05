@@ -7,8 +7,11 @@ import javax.inject.Singleton
 
 @Singleton
 class VillaRepository @Inject constructor(
-    private val villaDao: VillaDao
+    private val villaDao: VillaDao,
+    private val scheduleDao: ScheduleDao
 ) {
+    // ── MaintenanceRecord operations ──────────────────────────
+
     suspend fun insertRecord(record: MaintenanceRecord): Long {
         return villaDao.insertRecord(record)
     }
@@ -48,6 +51,29 @@ class VillaRepository @Inject constructor(
         villaDao.markIncomplete(id)
     }
 
+    suspend fun getRecordById(id: Long): MaintenanceRecord? {
+        return villaDao.getRecordById(id)
+    }
+
+    suspend fun getPreviousCompletedRecord(scheduleId: Long, beforeDate: Long): MaintenanceRecord? {
+        if (scheduleId == 0L) return null
+        return villaDao.getPreviousCompletedRecord(scheduleId, beforeDate)
+    }
+
+    suspend fun getPreviousRecordByType(villaNumber: Int, scheduleType: String, beforeDate: Long): MaintenanceRecord? {
+        return villaDao.getPreviousRecordByType(villaNumber, scheduleType, beforeDate)
+    }
+
+    suspend fun updateRecordData(
+        id: Long,
+        granular: Double, tablet: Double, hcl: Double, trusi: Double,
+        sodaAsh: Double, pac: Double, tesPh: Double, tesChlorine: Double,
+        vakum: Double, brushing: Double, kurasBalancing: Double,
+        checkStatus: String
+    ) {
+        villaDao.updateRecordData(id, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, checkStatus)
+    }
+
     suspend fun getStatsInRange(startMs: Long, endMs: Long): AggregatedStats {
         return villaDao.getStatsInRange(startMs, endMs)
     }
@@ -59,6 +85,80 @@ class VillaRepository @Inject constructor(
     suspend fun deleteRecord(id: Long) {
         villaDao.deleteRecord(id)
     }
+
+    // ── Schedule operations ────────────────────────────────────
+
+    suspend fun insertSchedule(schedule: Schedule): Long {
+        return scheduleDao.insertSchedule(schedule)
+    }
+
+    suspend fun getActiveSchedules(): List<Schedule> {
+        return scheduleDao.getActiveSchedules()
+    }
+
+    fun getActiveSchedulesFlow(): Flow<List<Schedule>> {
+        return scheduleDao.getActiveSchedulesFlow()
+    }
+
+    suspend fun getSchedulesForVilla(villaNumber: Int): List<Schedule> {
+        return scheduleDao.getSchedulesForVilla(villaNumber)
+    }
+
+    suspend fun getScheduleById(id: Long): Schedule? {
+        return scheduleDao.getScheduleById(id)
+    }
+
+    suspend fun getDueSchedules(): List<Schedule> {
+        val (startOfDay, endOfDay) = getTodayRange()
+        return scheduleDao.getDueSchedules(startOfDay, endOfDay)
+    }
+
+    suspend fun updateNextDueDate(id: Long, nextDueDate: Long) {
+        scheduleDao.updateNextDueDate(id, nextDueDate)
+    }
+
+    suspend fun deactivateSchedule(id: Long) {
+        scheduleDao.deactivateSchedule(id)
+    }
+
+    suspend fun deleteSchedule(id: Long) {
+        scheduleDao.deleteSchedule(id)
+    }
+
+    // ── Recurrence calculation ─────────────────────────────────
+
+    /**
+     * Calculate the next due date based on the recurrence rule.
+     * - Monitoring: every 4 days
+     * - Treatment Mingguan: weekly (7 days)
+     * - Deep Treatment: monthly (same date next month)
+     */
+    fun calculateNextDueDate(currentDueDate: Long, recurrenceRule: String): Long {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = currentDueDate
+
+        when (recurrenceRule) {
+            RecurrenceRule.EVERY_4_DAYS -> calendar.add(Calendar.DAY_OF_MONTH, 4)
+            RecurrenceRule.WEEKLY -> calendar.add(Calendar.DAY_OF_MONTH, 7)
+            RecurrenceRule.MONTHLY -> calendar.add(Calendar.MONTH, 1)
+        }
+
+        return calendar.timeInMillis
+    }
+
+    /**
+     * Get the recurrence rule for a schedule type.
+     */
+    fun getRecurrenceRule(scheduleType: String): String {
+        return when (scheduleType) {
+            ScheduleType.MONITORING -> RecurrenceRule.EVERY_4_DAYS
+            ScheduleType.TREATMENT_MINGGUAN -> RecurrenceRule.WEEKLY
+            ScheduleType.DEEP_TREATMENT -> RecurrenceRule.MONTHLY
+            else -> RecurrenceRule.EVERY_4_DAYS
+        }
+    }
+
+    // ── Date utility ───────────────────────────────────────────
 
     private fun getTodayRange(): Pair<Long, Long> {
         return getDayRange(System.currentTimeMillis())
@@ -83,36 +183,10 @@ class VillaRepository @Inject constructor(
     }
 
     companion object {
-        /**
-         * Line A: Villa 02 to Villa 26 (25 villas).
-         * Upper horizontal row, pools facing down toward partition.
-         */
         val LINE_A: List<Int> = (2..26).toList()
-
-        /**
-         * Line B: Villa 28 to Villa 49 (22 villas).
-         * Middle horizontal row, pools facing up toward Line A partition.
-         * Offset 3 villa positions so V49 aligns with V26.
-         */
         val LINE_B: List<Int> = (28..49).toList()
-
-        /**
-         * Line C: Villa 50 to Villa 63 (14 villas).
-         * Lower horizontal row, pools facing down (same as Line A).
-         * Offset 5 villa positions so V50 aligns with V30.
-         */
         val LINE_C: List<Int> = (50..63).toList()
-
-        /**
-         * All villa numbers on the denah (map).
-         * Total: 61 villas (25 + 22 + 14).
-         */
         val MAP_VILLA_NUMBERS: List<Int> = LINE_A + LINE_B + LINE_C
-
-        /**
-         * Legacy: All valid villa numbers (1-63 excluding 2 and 27).
-         * Kept for backward compatibility with stats queries.
-         */
         val VILLA_NUMBERS: List<Int> = (1..63).filter { it != 27 }
     }
 }

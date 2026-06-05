@@ -47,6 +47,45 @@ interface VillaDao {
     suspend fun markIncomplete(id: Long)
 
     @Query("""
+        SELECT * FROM maintenance_records
+        WHERE id = :id
+    """)
+    suspend fun getRecordById(id: Long): MaintenanceRecord?
+
+    @Query("""
+        SELECT * FROM maintenance_records
+        WHERE scheduleId = :scheduleId AND isCompleted = 1 AND scheduledDate < :beforeDate
+        ORDER BY scheduledDate DESC
+        LIMIT 1
+    """)
+    suspend fun getPreviousCompletedRecord(scheduleId: Long, beforeDate: Long): MaintenanceRecord?
+
+    @Query("""
+        SELECT * FROM maintenance_records
+        WHERE villaNumber = :villaNumber AND scheduleType = :scheduleType AND isCompleted = 1 AND scheduledDate < :beforeDate
+        ORDER BY scheduledDate DESC
+        LIMIT 1
+    """)
+    suspend fun getPreviousRecordByType(villaNumber: Int, scheduleType: String, beforeDate: Long): MaintenanceRecord?
+
+    @Query("UPDATE maintenance_records SET granular = :granular, tablet = :tablet, hcl = :hcl, trusi = :trusi, sodaAsh = :sodaAsh, pac = :pac, tesPh = :tesPh, tesChlorine = :tesChlorine, vakum = :vakum, brushing = :brushing, kurasBalancing = :kurasBalancing, checkStatus = :checkStatus, isCompleted = 1 WHERE id = :id")
+    suspend fun updateRecordData(
+        id: Long,
+        granular: Double,
+        tablet: Double,
+        hcl: Double,
+        trusi: Double,
+        sodaAsh: Double,
+        pac: Double,
+        tesPh: Double,
+        tesChlorine: Double,
+        vakum: Double,
+        brushing: Double,
+        kurasBalancing: Double,
+        checkStatus: String
+    )
+
+    @Query("""
         SELECT COALESCE(SUM(granular), 0.0) AS totalGranular,
                COALESCE(SUM(tablet), 0.0) AS totalTablet,
                COALESCE(SUM(hcl), 0.0) AS totalHcl,

@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.poolmaintenance.app.R
 import com.poolmaintenance.app.data.MaintenanceRecord
+import com.poolmaintenance.app.data.RecurrenceRule
+import com.poolmaintenance.app.data.Schedule
 import com.poolmaintenance.app.data.ScheduleType
 import com.poolmaintenance.app.data.VillaRepository
 import com.poolmaintenance.app.ui.icons.AppIcons
@@ -142,12 +144,14 @@ fun MapScreen(
         ScheduleDialog(
             villaNumber = uiState.selectedVilla!!,
             existingRecords = uiState.existingRecords,
+            existingSchedules = uiState.existingSchedules,
             isLoading = uiState.isLoading,
             onDismiss = { viewModel.dismissDialog() },
             onSchedule = { villaNum, date, sType, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status ->
                 viewModel.scheduleMaintenance(villaNum, date, sType, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status)
             },
-            onDeleteRecord = { id -> viewModel.deleteRecord(id) }
+            onDeleteRecord = { id -> viewModel.deleteRecord(id) },
+            onDeleteSchedule = { id -> viewModel.deleteSchedule(id) }
         )
     }
 }
@@ -255,17 +259,19 @@ fun LegendSection() {
     }
 }
 
-// ========== Schedule Dialog — vertical list of 3 schedule types ==========
+// ========== Schedule Dialog — villa → type → date → input flow ==========
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduleDialog(
     villaNumber: Int,
     existingRecords: List<MaintenanceRecord>,
+    existingSchedules: List<Schedule>,
     isLoading: Boolean,
     onDismiss: () -> Unit,
     onSchedule: (Int, Long, String, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, String) -> Unit,
-    onDeleteRecord: (Long) -> Unit
+    onDeleteRecord: (Long) -> Unit,
+    onDeleteSchedule: (Long) -> Unit
 ) {
     // null = no form shown; non-null = schedule type selected
     var selectedScheduleType by remember { mutableStateOf<String?>(null) }
@@ -287,6 +293,13 @@ fun ScheduleDialog(
     var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")) }
+
+    val recurrenceLabel = when (selectedScheduleType) {
+        ScheduleType.MONITORING -> "Tiap 4 hari"
+        ScheduleType.TREATMENT_MINGGUAN -> "Seminggu sekali"
+        ScheduleType.DEEP_TREATMENT -> "Tiap bulan"
+        else -> ""
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -312,17 +325,25 @@ fun ScheduleDialog(
                             color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
-                                // Type badge at top — uses theme colors only
-                                Surface(
-                                    shape = RoundedCornerShape(4.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer
-                                ) {
+                                // Type badge + recurrence label
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = MaterialTheme.colorScheme.primaryContainer
+                                    ) {
+                                        Text(
+                                            text = selectedScheduleType!!,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = selectedScheduleType!!,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        text = recurrenceLabel,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -396,6 +417,25 @@ fun ScheduleDialog(
                                     }
                                 }
                             }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    // Active schedules
+                    if (existingSchedules.isNotEmpty() && selectedScheduleType == null) {
+                        Text(
+                            text = "Jadwal Aktif",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        existingSchedules.forEach { schedule ->
+                            ScheduleItem(
+                                schedule = schedule,
+                                dateFormatter = dateFormatter,
+                                onDelete = { onDeleteSchedule(schedule.id) }
+                            )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -549,6 +589,63 @@ fun DeepTreatmentFields(
     }
 }
 
+// ========== Schedule item showing active schedule ==========
+@Composable
+fun ScheduleItem(
+    schedule: Schedule,
+    dateFormatter: SimpleDateFormat,
+    onDelete: () -> Unit
+) {
+    val recLabel = when (schedule.recurrenceRule) {
+        RecurrenceRule.EVERY_4_DAYS -> "Tiap 4 hari"
+        RecurrenceRule.WEEKLY -> "Mingguan"
+        RecurrenceRule.MONTHLY -> "Bulanan"
+        else -> schedule.recurrenceRule
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+        shape = RoundedCornerShape(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            text = schedule.scheduleType,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = recLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = "Mulai: ${dateFormatter.format(Date(schedule.startDate))} | Berikutnya: ${dateFormatter.format(Date(schedule.nextDueDate))}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onDelete, modifier = Modifier.size(20.dp)) {
+                Icon(imageVector = AppIcons.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
+            }
+        }
+    }
+}
+
 // ========== Record item with schedule type badge ==========
 @Composable
 fun ScheduleRecordItem(
@@ -572,7 +669,6 @@ fun ScheduleRecordItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Schedule type badge — uses theme colors
                     Surface(
                         shape = RoundedCornerShape(4.dp),
                         color = MaterialTheme.colorScheme.primaryContainer
@@ -594,7 +690,7 @@ fun ScheduleRecordItem(
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (record.isCompleted) {
-                        Text(text = "✓", style = MaterialTheme.typography.labelSmall, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+                        Text(text = "\u2713", style = MaterialTheme.typography.labelSmall, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.width(4.dp))
                     }
                     IconButton(onClick = onDelete, modifier = Modifier.size(20.dp)) {
@@ -603,7 +699,6 @@ fun ScheduleRecordItem(
                 }
             }
             Spacer(modifier = Modifier.height(2.dp))
-            // Show fields based on schedule type
             when (record.scheduleType) {
                 ScheduleType.MONITORING -> {
                     Row(modifier = Modifier.fillMaxWidth()) {

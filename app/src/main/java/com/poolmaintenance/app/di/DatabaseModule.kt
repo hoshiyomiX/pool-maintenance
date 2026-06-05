@@ -2,6 +2,8 @@ package com.poolmaintenance.app.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.work.WorkManager
+import com.poolmaintenance.app.data.ScheduleDao
 import com.poolmaintenance.app.data.VillaDao
 import com.poolmaintenance.app.data.VillaDatabase
 import com.poolmaintenance.app.data.VillaRepository
@@ -27,6 +29,7 @@ object DatabaseModule {
             .addMigrations(VillaDatabase.MIGRATION_1_2)
             .addMigrations(VillaDatabase.MIGRATION_2_3)
             .addMigrations(VillaDatabase.MIGRATION_3_4)
+            .addMigrations(VillaDatabase.MIGRATION_4_5)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -37,8 +40,19 @@ object DatabaseModule {
     }
 
     @Provides
+    fun provideScheduleDao(database: VillaDatabase): ScheduleDao {
+        return database.scheduleDao()
+    }
+
+    @Provides
     @Singleton
-    fun provideVillaRepository(villaDao: VillaDao): VillaRepository {
-        return VillaRepository(villaDao)
+    fun provideVillaRepository(villaDao: VillaDao, scheduleDao: ScheduleDao): VillaRepository {
+        return VillaRepository(villaDao, scheduleDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
+        return WorkManager.getInstance(context)
     }
 }
