@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -63,7 +64,6 @@ fun ReminderScreen(
     viewModel: ReminderViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale("id", "ID")) }
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")) }
 
     // Request notification permission on API 33+
@@ -138,7 +138,8 @@ fun ReminderScreen(
             onDismiss = { viewModel.dismissDetail() },
             onUpdate = { id, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status ->
                 viewModel.updateRecordData(id, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status)
-            }
+            },
+            onToggleStatus = { viewModel.toggleCompleted(uiState.selectedRecord!!); viewModel.dismissDetail() }
         )
     }
 }
@@ -229,9 +230,9 @@ fun ReminderCard(
                     }
                 }
                 Text(
-                    text = record.checkStatus,
+                    text = if (record.isCompleted) "Selesai" else "Pending",
                     style = MaterialTheme.typography.labelSmall,
-                    color = when (record.checkStatus) { "Sudah Dicek" -> Color(0xFF2E7D32); else -> Color(0xFFC62828) }
+                    color = if (record.isCompleted) Color(0xFF2E7D32) else Color(0xFFF57F17)
                 )
             }
 
@@ -242,7 +243,7 @@ fun ReminderCard(
     }
 }
 
-// ========== Detail Dialog: previous data + input fields ==========
+// ========== Detail Dialog: previous data + input fields + status toggle ==========
 
 @Composable
 fun ReminderDetailDialog(
@@ -250,7 +251,8 @@ fun ReminderDetailDialog(
     previousRecord: MaintenanceRecord?,
     dateFormatter: SimpleDateFormat,
     onDismiss: () -> Unit,
-    onUpdate: (Long, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, String) -> Unit
+    onUpdate: (Long, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, String) -> Unit,
+    onToggleStatus: () -> Unit
 ) {
     // Input state
     var granularInput by remember { mutableStateOf(if (record.granular > 0.0) record.granular.toString() else "") }
@@ -264,7 +266,6 @@ fun ReminderDetailDialog(
     var vakumInput by remember { mutableStateOf(record.vakum > 0.0) }
     var brushingInput by remember { mutableStateOf(record.brushing > 0.0) }
     var kurasBalancingInput by remember { mutableStateOf(record.kurasBalancing > 0.0) }
-    var checkStatus by remember { mutableStateOf(record.checkStatus) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -273,6 +274,22 @@ fun ReminderDetailDialog(
                 Icon(imageVector = AppIcons.Pool, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Villa ${String.format("%02d", record.villaNumber)}")
+                Spacer(modifier = Modifier.weight(1f))
+                // Status toggle button
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (record.isCompleted) Color(0xFFE8F5E9) else Color(0xFFFFF8E1)
+                ) {
+                    TextButton(onClick = onToggleStatus) {
+                        Text(
+                            text = if (record.isCompleted) "Selesai" else "Pending",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (record.isCompleted) Color(0xFF2E7D32) else Color(0xFFF57F17),
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                    }
+                }
             }
         },
         text = {
@@ -324,9 +341,9 @@ fun ReminderDetailDialog(
                 HorizontalDivider()
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Input fields for current date
+                // Input fields for editing current record
                 Text(
-                    text = "Input Hari Ini",
+                    text = "Edit Data",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -406,7 +423,6 @@ fun ReminderDetailDialog(
  */
 @Composable
 fun PreviousDataMarkdown(record: MaintenanceRecord) {
-    // Use monospace font for a markdown/code-like feel
     val monoStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
 
     when (record.scheduleType) {
@@ -429,4 +445,3 @@ fun PreviousDataMarkdown(record: MaintenanceRecord) {
         }
     }
 }
-

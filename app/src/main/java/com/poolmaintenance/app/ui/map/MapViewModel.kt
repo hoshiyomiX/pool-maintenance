@@ -70,7 +70,9 @@ class MapViewModel @Inject constructor(
         vakum: Double,
         brushing: Double,
         kurasBalancing: Double,
-        checkStatus: String
+        checkStatus: String,
+        scheduledHour: Int = -1,
+        scheduledMinute: Int = -1
     ) {
         viewModelScope.launch {
             // Create the recurring schedule
@@ -82,11 +84,13 @@ class MapViewModel @Inject constructor(
                 scheduleType = scheduleType,
                 startDate = scheduledDate,
                 nextDueDate = nextDueDate,
-                recurrenceRule = recurrenceRule
+                recurrenceRule = recurrenceRule,
+                scheduledHour = scheduledHour,
+                scheduledMinute = scheduledMinute
             )
             val scheduleId = repository.insertSchedule(schedule)
 
-            // Create the first MaintenanceRecord with user's data
+            // Create the first MaintenanceRecord with user's data — NOT completed by default
             val record = MaintenanceRecord(
                 villaNumber = villaNumber,
                 date = System.currentTimeMillis(),
@@ -105,7 +109,7 @@ class MapViewModel @Inject constructor(
                 brushing = brushing,
                 kurasBalancing = kurasBalancing,
                 checkStatus = checkStatus,
-                isCompleted = true
+                isCompleted = false
             )
             repository.insertRecord(record)
 
@@ -131,7 +135,18 @@ class MapViewModel @Inject constructor(
 
     fun deleteSchedule(id: Long) {
         viewModelScope.launch {
-            repository.deactivateSchedule(id)
+            repository.deleteSchedule(id)
+            val currentVilla = _uiState.value.selectedVilla
+            if (currentVilla != null) {
+                val updatedSchedules = repository.getSchedulesForVilla(currentVilla)
+                _uiState.value = _uiState.value.copy(existingSchedules = updatedSchedules)
+            }
+        }
+    }
+
+    fun editScheduleTime(scheduleId: Long, hour: Int, minute: Int) {
+        viewModelScope.launch {
+            repository.updateScheduleTime(scheduleId, hour, minute)
             val currentVilla = _uiState.value.selectedVilla
             if (currentVilla != null) {
                 val updatedSchedules = repository.getSchedulesForVilla(currentVilla)

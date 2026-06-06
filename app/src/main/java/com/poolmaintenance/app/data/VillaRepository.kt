@@ -117,6 +117,10 @@ class VillaRepository @Inject constructor(
         scheduleDao.updateNextDueDate(id, nextDueDate)
     }
 
+    suspend fun updateScheduleTime(id: Long, hour: Int, minute: Int) {
+        scheduleDao.updateScheduleTime(id, hour, minute)
+    }
+
     suspend fun deactivateSchedule(id: Long) {
         scheduleDao.deactivateSchedule(id)
     }

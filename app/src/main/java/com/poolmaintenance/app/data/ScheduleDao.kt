@@ -16,7 +16,7 @@ interface ScheduleDao {
     @Query("SELECT * FROM schedules WHERE isActive = 1")
     fun getActiveSchedulesFlow(): kotlinx.coroutines.flow.Flow<List<Schedule>>
 
-    @Query("SELECT * FROM schedules WHERE villaNumber = :villaNumber ORDER BY createdAt DESC")
+    @Query("SELECT * FROM schedules WHERE villaNumber = :villaNumber AND isActive = 1 ORDER BY createdAt DESC")
     suspend fun getSchedulesForVilla(villaNumber: Int): List<Schedule>
 
     @Query("SELECT * FROM schedules WHERE id = :id")
@@ -32,6 +32,11 @@ interface ScheduleDao {
         UPDATE schedules SET nextDueDate = :nextDueDate WHERE id = :id
     """)
     suspend fun updateNextDueDate(id: Long, nextDueDate: Long)
+
+    @Query("""
+        UPDATE schedules SET scheduledHour = :hour, scheduledMinute = :minute WHERE id = :id
+    """)
+    suspend fun updateScheduleTime(id: Long, hour: Int, minute: Int)
 
     @Query("UPDATE schedules SET isActive = 0 WHERE id = :id")
     suspend fun deactivateSchedule(id: Long)

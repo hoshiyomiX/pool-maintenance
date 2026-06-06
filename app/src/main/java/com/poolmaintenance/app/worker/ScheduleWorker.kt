@@ -10,6 +10,7 @@ import com.poolmaintenance.app.data.VillaRepository
 import com.poolmaintenance.app.notification.NotificationHelper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import java.util.Calendar
 
 /**
  * WorkManager worker that runs daily to check for due schedules.
@@ -17,6 +18,10 @@ import dagger.assisted.AssistedInject
  * 1. Create a new MaintenanceRecord (empty data, isCompleted = false)
  * 2. Update the schedule's nextDueDate
  * 3. Send a push notification
+ *
+ * For Monitoring schedules with a set time, the notification is triggered
+ * only when the current hour matches the scheduled time.
+ * For other types, notifications are sent on the daily check.
  */
 @HiltWorker
 class ScheduleWorker @AssistedInject constructor(
@@ -28,9 +33,24 @@ class ScheduleWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         return try {
             val dueSchedules = repository.getDueSchedules()
+            val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
 
             for (schedule in dueSchedules) {
-                // Create empty MaintenanceRecord for the due date
+                // For Monitoring with a set time: only notify at the scheduled hour
+                // For other types: always notify on the daily check
+                val shouldNotify = when (schedule.scheduleType) {
+                    ScheduleType.MONITORING -> {
+                        if (schedule.scheduledHour >= 0) {
+                            // Only notify if current hour matches scheduled hour (within 1-hour window)
+                            currentHour == schedule.scheduledHour
+                        } else {
+                            true // No time set, notify on daily check
+                        }
+                    }
+                    else -> true // Treatment Mingguan & Deep Treatment always notify
+                }
+
+                // Always create the record regardless of notification timing
                 val record = MaintenanceRecord(
                     villaNumber = schedule.villaNumber,
                     date = System.currentTimeMillis(),
@@ -47,13 +67,15 @@ class ScheduleWorker @AssistedInject constructor(
                 val nextDue = repository.calculateNextDueDate(schedule.nextDueDate, schedule.recurrenceRule)
                 repository.updateNextDueDate(schedule.id, nextDue)
 
-                // Send notification
-                NotificationHelper.showScheduleNotification(
-                    applicationContext,
-                    schedule.villaNumber,
-                    schedule.scheduleType,
-                    recordId
-                )
+                // Send notification only if time matches
+                if (shouldNotify) {
+                    NotificationHelper.showScheduleNotification(
+                        applicationContext,
+                        schedule.villaNumber,
+                        schedule.scheduleType,
+                        recordId
+                    )
+                }
             }
 
             Result.success()

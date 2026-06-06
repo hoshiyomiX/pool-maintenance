@@ -1,5 +1,6 @@
 package com.poolmaintenance.app.ui.map
 
+import android.app.TimePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -147,11 +149,12 @@ fun MapScreen(
             existingSchedules = uiState.existingSchedules,
             isLoading = uiState.isLoading,
             onDismiss = { viewModel.dismissDialog() },
-            onSchedule = { villaNum, date, sType, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status ->
-                viewModel.scheduleMaintenance(villaNum, date, sType, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status)
+            onSchedule = { villaNum, date, sType, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status, hour, minute ->
+                viewModel.scheduleMaintenance(villaNum, date, sType, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status, hour, minute)
             },
             onDeleteRecord = { id -> viewModel.deleteRecord(id) },
-            onDeleteSchedule = { id -> viewModel.deleteSchedule(id) }
+            onDeleteSchedule = { id -> viewModel.deleteSchedule(id) },
+            onEditScheduleTime = { id, hour, minute -> viewModel.editScheduleTime(id, hour, minute) }
         )
     }
 }
@@ -259,7 +262,7 @@ fun LegendSection() {
     }
 }
 
-// ========== Schedule Dialog — villa → type → date → input flow ==========
+// ========== Schedule Dialog — villa → type → date → time (Monitoring) → input flow ==========
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -269,11 +272,12 @@ fun ScheduleDialog(
     existingSchedules: List<Schedule>,
     isLoading: Boolean,
     onDismiss: () -> Unit,
-    onSchedule: (Int, Long, String, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, String) -> Unit,
+    onSchedule: (Int, Long, String, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, String, Int, Int) -> Unit,
     onDeleteRecord: (Long) -> Unit,
-    onDeleteSchedule: (Long) -> Unit
+    onDeleteSchedule: (Long) -> Unit,
+    onEditScheduleTime: (Long, Int, Int) -> Unit
 ) {
-    // null = no form shown; non-null = schedule type selected
+    val context = LocalContext.current
     var selectedScheduleType by remember { mutableStateOf<String?>(null) }
     // Monitoring fields
     var granularInput by remember { mutableStateOf("") }
@@ -292,7 +296,12 @@ fun ScheduleDialog(
     var checkStatus by remember { mutableStateOf("Sudah Dicek") }
     var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
+    // Time picker for Monitoring only
+    var selectedHour by remember { mutableStateOf(8) }
+    var selectedMinute by remember { mutableStateOf(0) }
+    var showTimePicker by remember { mutableStateOf(false) }
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")) }
+    val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale("id", "ID")) }
 
     val recurrenceLabel = when (selectedScheduleType) {
         ScheduleType.MONITORING -> "Tiap 4 hari"
@@ -318,7 +327,6 @@ fun ScheduleDialog(
             } else {
                 Column {
                     if (selectedScheduleType != null) {
-                        // ---- Schedule form for the selected type ----
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp),
@@ -348,9 +356,16 @@ fun ScheduleDialog(
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                // DATE PICKER at the top of the form
+                                // DATE PICKER
                                 TextButton(onClick = { showDatePicker = true }) {
                                     Text("Jadwal: ${dateFormatter.format(Date(selectedDate))}")
+                                }
+
+                                // TIME PICKER — only for Monitoring
+                                if (selectedScheduleType == ScheduleType.MONITORING) {
+                                    TextButton(onClick = { showTimePicker = true }) {
+                                        Text("Waktu: ${String.format("%02d:%02d", selectedHour, selectedMinute)}")
+                                    }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -387,6 +402,7 @@ fun ScheduleDialog(
                                         tesPhInput = ""; tesChlorineInput = ""
                                         vakumInput = false; brushingInput = false
                                         kurasBalancingInput = false
+                                        selectedHour = 8; selectedMinute = 0
                                     }) {
                                         Text(stringResource(R.string.cancel))
                                     }
@@ -404,7 +420,9 @@ fun ScheduleDialog(
                                             if (vakumInput) 1.0 else 0.0,
                                             if (brushingInput) 1.0 else 0.0,
                                             if (kurasBalancingInput) 1.0 else 0.0,
-                                            checkStatus
+                                            checkStatus,
+                                            if (selectedScheduleType == ScheduleType.MONITORING) selectedHour else -1,
+                                            if (selectedScheduleType == ScheduleType.MONITORING) selectedMinute else -1
                                         )
                                         selectedScheduleType = null
                                         granularInput = ""; tabletInput = ""; hclInput = ""
@@ -412,6 +430,7 @@ fun ScheduleDialog(
                                         tesPhInput = ""; tesChlorineInput = ""
                                         vakumInput = false; brushingInput = false
                                         kurasBalancingInput = false
+                                        selectedHour = 8; selectedMinute = 0
                                     }) {
                                         Text(stringResource(R.string.save))
                                     }
@@ -434,7 +453,8 @@ fun ScheduleDialog(
                             ScheduleItem(
                                 schedule = schedule,
                                 dateFormatter = dateFormatter,
-                                onDelete = { onDeleteSchedule(schedule.id) }
+                                onDelete = { onDeleteSchedule(schedule.id) },
+                                onEditTime = { hour, minute -> onEditScheduleTime(schedule.id, hour, minute) }
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -470,7 +490,6 @@ fun ScheduleDialog(
         },
         confirmButton = {
             if (selectedScheduleType == null) {
-                // Vertical list of 3 schedule type options — no icons, no custom colors
                 Column(modifier = Modifier.fillMaxWidth()) {
                     TextButton(
                         onClick = { selectedScheduleType = ScheduleType.MONITORING },
@@ -518,9 +537,24 @@ fun ScheduleDialog(
             DatePicker(state = datePickerState)
         }
     }
+
+    // Time picker for Monitoring
+    if (showTimePicker) {
+        TimePickerDialog(
+            context,
+            { _, hour, minute ->
+                selectedHour = hour
+                selectedMinute = minute
+                showTimePicker = false
+            },
+            selectedHour,
+            selectedMinute,
+            true
+        ).show()
+    }
 }
 
-// ========== Monitoring fields: Granular, Tablet, HCL, Trusi, Soda Ash, PAC, Tes pH, Tes Chlorine ==========
+// ========== Monitoring fields ==========
 @Composable
 fun MonitoringFields(
     granular: String, onGranular: (String) -> Unit,
@@ -553,55 +587,52 @@ fun MonitoringFields(
     }
 }
 
-// ========== Treatment Mingguan fields: Vakum, Brushing — checklist ==========
+// ========== Treatment Mingguan fields — checklist ==========
 @Composable
 fun TreatmentMingguanFields(
     vakum: Boolean, onVakum: (Boolean) -> Unit,
     brushing: Boolean, onBrushing: (Boolean) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Checkbox(checked = vakum, onCheckedChange = onVakum)
         Text("Vakum", style = MaterialTheme.typography.bodyLarge)
     }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Checkbox(checked = brushing, onCheckedChange = onBrushing)
         Text("Brushing", style = MaterialTheme.typography.bodyLarge)
     }
 }
 
-// ========== Deep Treatment fields: Kuras Balancing — checklist ==========
+// ========== Deep Treatment fields — checklist ==========
 @Composable
 fun DeepTreatmentFields(
     kurasBalancing: Boolean, onKurasBalancing: (Boolean) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Checkbox(checked = kurasBalancing, onCheckedChange = onKurasBalancing)
         Text("Kuras Balancing", style = MaterialTheme.typography.bodyLarge)
     }
 }
 
-// ========== Schedule item showing active schedule ==========
+// ========== Schedule item with edit time + delete ==========
 @Composable
 fun ScheduleItem(
     schedule: Schedule,
     dateFormatter: SimpleDateFormat,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEditTime: (Int, Int) -> Unit
 ) {
+    val context = LocalContext.current
     val recLabel = when (schedule.recurrenceRule) {
         RecurrenceRule.EVERY_4_DAYS -> "Tiap 4 hari"
         RecurrenceRule.WEEKLY -> "Mingguan"
         RecurrenceRule.MONTHLY -> "Bulanan"
         else -> schedule.recurrenceRule
     }
+    val timeLabel = if (schedule.scheduledHour >= 0) {
+        String.format("%02d:%02d", schedule.scheduledHour, schedule.scheduledMinute)
+    } else null
+
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
@@ -612,7 +643,7 @@ fun ScheduleItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = RoundedCornerShape(4.dp),
@@ -627,26 +658,60 @@ fun ScheduleItem(
                         )
                     }
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = recLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(text = recLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text(
                     text = "Mulai: ${dateFormatter.format(Date(schedule.startDate))} | Berikutnya: ${dateFormatter.format(Date(schedule.nextDueDate))}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                // Show time for Monitoring schedules
+                if (timeLabel != null) {
+                    Text(
+                        text = "Waktu: $timeLabel",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable {
+                            // Open time picker to edit
+                            TimePickerDialog(
+                                context,
+                                { _, hour, minute -> onEditTime(hour, minute) },
+                                schedule.scheduledHour.coerceAtLeast(0),
+                                schedule.scheduledMinute.coerceAtLeast(0),
+                                true
+                            ).show()
+                        }
+                    )
+                }
             }
-            IconButton(onClick = onDelete, modifier = Modifier.size(20.dp)) {
-                Icon(imageVector = AppIcons.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
+            Row {
+                // Edit time button for Monitoring
+                if (schedule.scheduleType == ScheduleType.MONITORING) {
+                    TextButton(
+                        onClick = {
+                            TimePickerDialog(
+                                context,
+                                { _, hour, minute -> onEditTime(hour, minute) },
+                                schedule.scheduledHour.coerceAtLeast(0),
+                                schedule.scheduledMinute.coerceAtLeast(0),
+                                true
+                            ).show()
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Text("Edit", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                IconButton(onClick = onDelete, modifier = Modifier.size(20.dp)) {
+                    Icon(imageVector = AppIcons.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
+                }
             }
         }
     }
 }
 
-// ========== Record item with schedule type badge ==========
+// ========== Record item ==========
 @Composable
 fun ScheduleRecordItem(
     record: MaintenanceRecord,
@@ -660,33 +725,18 @@ fun ScheduleRecordItem(
         ),
         shape = RoundedCornerShape(6.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(8.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        Text(
-                            text = record.scheduleType,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                    Surface(shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                        Text(text = record.scheduleType, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                     }
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = dateFormatter.format(Date(record.scheduledDate)),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(text = dateFormatter.format(Date(record.scheduledDate)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (record.isCompleted) {
@@ -701,37 +751,15 @@ fun ScheduleRecordItem(
             Spacer(modifier = Modifier.height(2.dp))
             when (record.scheduleType) {
                 ScheduleType.MONITORING -> {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        ChemLabel("Granular", "${record.granular} kg")
-                        Spacer(modifier = Modifier.width(6.dp))
-                        ChemLabel("Tablet", "${record.tablet.toInt()}")
-                        Spacer(modifier = Modifier.width(6.dp))
-                        ChemLabel("HCL", "${record.hcl} L")
-                    }
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        ChemLabel("Trusi", "${record.trusi} kg")
-                        Spacer(modifier = Modifier.width(6.dp))
-                        ChemLabel("Soda Ash", "${record.sodaAsh} kg")
-                        Spacer(modifier = Modifier.width(6.dp))
-                        ChemLabel("PAC", "${record.pac} L")
-                    }
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        ChemLabel("pH", "${record.tesPh}")
-                        Spacer(modifier = Modifier.width(6.dp))
-                        ChemLabel("Chlorine", "${record.tesChlorine} ppm")
-                    }
+                    Row(modifier = Modifier.fillMaxWidth()) { ChemLabel("Granular", "${record.granular} kg"); Spacer(modifier = Modifier.width(6.dp)); ChemLabel("Tablet", "${record.tablet.toInt()}"); Spacer(modifier = Modifier.width(6.dp)); ChemLabel("HCL", "${record.hcl} L") }
+                    Row(modifier = Modifier.fillMaxWidth()) { ChemLabel("Trusi", "${record.trusi} kg"); Spacer(modifier = Modifier.width(6.dp)); ChemLabel("Soda Ash", "${record.sodaAsh} kg"); Spacer(modifier = Modifier.width(6.dp)); ChemLabel("PAC", "${record.pac} L") }
+                    Row(modifier = Modifier.fillMaxWidth()) { ChemLabel("pH", "${record.tesPh}"); Spacer(modifier = Modifier.width(6.dp)); ChemLabel("Chlorine", "${record.tesChlorine} ppm") }
                 }
                 ScheduleType.TREATMENT_MINGGUAN -> {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        CheckLabel("Vakum", record.vakum > 0.0)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        CheckLabel("Brushing", record.brushing > 0.0)
-                    }
+                    Row(modifier = Modifier.fillMaxWidth()) { CheckLabel("Vakum", record.vakum > 0.0); Spacer(modifier = Modifier.width(6.dp)); CheckLabel("Brushing", record.brushing > 0.0) }
                 }
                 ScheduleType.DEEP_TREATMENT -> {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        CheckLabel("Kuras Balancing", record.kurasBalancing > 0.0)
-                    }
+                    Row(modifier = Modifier.fillMaxWidth()) { CheckLabel("Kuras Balancing", record.kurasBalancing > 0.0) }
                 }
             }
         }
@@ -740,20 +768,10 @@ fun ScheduleRecordItem(
 
 @Composable
 fun ChemLabel(name: String, value: String) {
-    Text(
-        text = "$name: $value",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textDecoration = TextDecoration.None
-    )
+    Text(text = "$name: $value", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textDecoration = TextDecoration.None)
 }
 
 @Composable
 fun CheckLabel(name: String, checked: Boolean) {
-    Text(
-        text = "$name: ${if (checked) "Ya" else "\u2014"}",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textDecoration = TextDecoration.None
-    )
+    Text(text = "$name: ${if (checked) "Ya" else "\u2014"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textDecoration = TextDecoration.None)
 }
