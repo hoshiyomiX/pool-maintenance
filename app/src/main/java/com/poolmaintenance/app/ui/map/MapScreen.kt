@@ -512,35 +512,45 @@ fun ScheduleDialog(
                             }
                         }
                     }
+
+                    // Schedule type selection — shown when no type is selected
+                    if (selectedScheduleType == null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Tambah Jadwal Baru",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            TextButton(
+                                onClick = { selectedScheduleType = ScheduleType.MONITORING },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Monitoring")
+                            }
+                            TextButton(
+                                onClick = { selectedScheduleType = ScheduleType.TREATMENT_MINGGUAN },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Treatment Mingguan")
+                            }
+                            TextButton(
+                                onClick = { selectedScheduleType = ScheduleType.DEEP_TREATMENT },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Deep Treatment")
+                            }
+                        }
+                    }
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) { Text("Tutup") }
-        },
-        dismissButton = {
-            if (selectedScheduleType == null) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    TextButton(
-                        onClick = { selectedScheduleType = ScheduleType.MONITORING },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Monitoring")
-                    }
-                    TextButton(
-                        onClick = { selectedScheduleType = ScheduleType.TREATMENT_MINGGUAN },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Treatment Mingguan")
-                    }
-                    TextButton(
-                        onClick = { selectedScheduleType = ScheduleType.DEEP_TREATMENT },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Deep Treatment")
-                    }
-                }
-            }
         }
     )
 
