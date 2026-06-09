@@ -124,6 +124,14 @@ interface VillaDao {
     """)
     suspend fun getPerVillaStatsInRange(startMs: Long, endMs: Long): List<VillaStats>
 
+    @Query("""
+        SELECT * FROM maintenance_records
+        WHERE scheduleId = :scheduleId
+        ORDER BY scheduledDate DESC
+        LIMIT 1
+    """)
+    suspend fun getLatestRecordForSchedule(scheduleId: Long): MaintenanceRecord?
+
     @Query("DELETE FROM maintenance_records WHERE id = :id")
     suspend fun deleteRecord(id: Long)
 }
