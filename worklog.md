@@ -1,7 +1,7 @@
 ---
 last_phase: DELIVER
-task: Add delete confirmation popup for active schedule deletion in Riwayat Jadwal
-complexity: Simple
+task: Fix delete confirmation for all items, add edit for records, move Tutup to bottom-right
+complexity: Standard
 task_type: Coding
-files_modified: MapScreen.kt
+files_modified: MapScreen.kt, MapViewModel.kt
 next_step: IDLE - awaiting input
