@@ -313,6 +313,7 @@ fun ScheduleDialog(
     var selectedMinute by remember { mutableStateOf(0) }
     var showTimePicker by remember { mutableStateOf(false) }
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")) }
+    var pendingDeleteScheduleId by remember { mutableStateOf<Long?>(null) }
 
     val recurrenceLabel = when (selectedScheduleType) {
         ScheduleType.MONITORING -> "Tiap 4 hari"
@@ -464,7 +465,7 @@ fun ScheduleDialog(
                             ScheduleItem(
                                 schedule = schedule,
                                 dateFormatter = dateFormatter,
-                                onDelete = { onDeleteSchedule(schedule.id) },
+                                onDelete = { pendingDeleteScheduleId = schedule.id },
                                 onEdit = { onEditSchedule(schedule) }
                             )
                         }
@@ -562,6 +563,52 @@ fun ScheduleDialog(
             selectedMinute,
             true
         ).show()
+    }
+
+    // Delete schedule confirmation dialog
+    if (pendingDeleteScheduleId != null) {
+        val scheduleToDelete = existingSchedules.find { it.id == pendingDeleteScheduleId }
+        AlertDialog(
+            onDismissRequest = { pendingDeleteScheduleId = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = AppIcons.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Hapus Jadwal?")
+                }
+            },
+            text = {
+                Column {
+                    if (scheduleToDelete != null) {
+                        Text(
+                            text = "Jadwal ${scheduleToDelete.scheduleType} Villa ${String.format("%02d", scheduleToDelete.villaNumber)} akan dihapus permanen.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    Text(
+                        text = "Menghapus jadwal akan menghentikan seluruh siklus maintenance berulang yang akan datang. Catatan yang sudah tercatat tidak akan terhapus.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteSchedule(pendingDeleteScheduleId!!)
+                        pendingDeleteScheduleId = null
+                    }
+                ) {
+                    Text("Hapus", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteScheduleId = null }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 }
 
