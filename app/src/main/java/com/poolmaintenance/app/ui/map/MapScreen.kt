@@ -154,7 +154,8 @@ fun MapScreen(
             },
             onDeleteRecord = { id -> viewModel.deleteRecord(id) },
             onDeleteSchedule = { id -> viewModel.deleteSchedule(id) },
-            onEditSchedule = { schedule -> viewModel.openEditSchedule(schedule) }
+            onEditSchedule = { schedule -> viewModel.openEditSchedule(schedule) },
+            onEditRecord = { record -> viewModel.openEditRecord(record) }
         )
     }
 
@@ -166,6 +167,17 @@ fun MapScreen(
             onDismiss = { viewModel.dismissEditDialog() },
             onSave = { scheduleId, startDate, hour, minute, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status ->
                 viewModel.editSchedule(scheduleId, startDate, hour, minute, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status)
+            }
+        )
+    }
+
+    // Edit record dialog — for records without an active schedule
+    if (uiState.showEditDialog && uiState.editingSchedule == null && uiState.editingRecord != null) {
+        EditRecordDialog(
+            record = uiState.editingRecord!!,
+            onDismiss = { viewModel.dismissEditDialog() },
+            onSave = { recordId, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, checkStatus ->
+                viewModel.editRecord(recordId, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, checkStatus)
             }
         )
     }
@@ -287,7 +299,8 @@ fun ScheduleDialog(
     onSchedule: (Int, Long, String, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, String, Int, Int) -> Unit,
     onDeleteRecord: (Long) -> Unit,
     onDeleteSchedule: (Long) -> Unit,
-    onEditSchedule: (Schedule) -> Unit
+    onEditSchedule: (Schedule) -> Unit,
+    onEditRecord: (MaintenanceRecord) -> Unit
 ) {
     val context = LocalContext.current
     var selectedScheduleType by remember { mutableStateOf<String?>(null) }
@@ -314,6 +327,7 @@ fun ScheduleDialog(
     var showTimePicker by remember { mutableStateOf(false) }
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")) }
     var pendingDeleteScheduleId by remember { mutableStateOf<Long?>(null) }
+    var pendingDeleteRecordId by remember { mutableStateOf<Long?>(null) }
 
     val recurrenceLabel = when (selectedScheduleType) {
         ScheduleType.MONITORING -> "Tiap 4 hari"
@@ -492,7 +506,8 @@ fun ScheduleDialog(
                                 ScheduleRecordItem(
                                     record = record,
                                     dateFormatter = dateFormatter,
-                                    onDelete = { onDeleteRecord(record.id) }
+                                    onDelete = { pendingDeleteRecordId = record.id },
+                                    onEdit = { onEditRecord(record) }
                                 )
                             }
                         }
@@ -501,6 +516,9 @@ fun ScheduleDialog(
             }
         },
         confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Tutup") }
+        },
+        dismissButton = {
             if (selectedScheduleType == null) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     TextButton(
@@ -523,9 +541,6 @@ fun ScheduleDialog(
                     }
                 }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Tutup") }
         }
     )
 
@@ -605,6 +620,52 @@ fun ScheduleDialog(
             },
             dismissButton = {
                 TextButton(onClick = { pendingDeleteScheduleId = null }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
+    // Delete record confirmation dialog
+    if (pendingDeleteRecordId != null) {
+        val recordToDelete = existingRecords.find { it.id == pendingDeleteRecordId }
+        AlertDialog(
+            onDismissRequest = { pendingDeleteRecordId = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = AppIcons.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Hapus Catatan?")
+                }
+            },
+            text = {
+                Column {
+                    if (recordToDelete != null) {
+                        Text(
+                            text = "Catatan ${recordToDelete.scheduleType} Villa ${String.format("%02d", recordToDelete.villaNumber)} tanggal ${dateFormatter.format(Date(recordToDelete.scheduledDate))} akan dihapus.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    Text(
+                        text = "Catatan yang dihapus tidak dapat dikembalikan. Jadwal berulang tidak akan terpengaruh.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteRecord(pendingDeleteRecordId!!)
+                        pendingDeleteRecordId = null
+                    }
+                ) {
+                    Text("Hapus", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteRecordId = null }) {
                     Text("Batal")
                 }
             }
@@ -789,6 +850,105 @@ fun EditScheduleDialog(
     }
 }
 
+// ========== Edit Record Dialog — for records without active schedule ==========
+
+@Composable
+fun EditRecordDialog(
+    record: MaintenanceRecord,
+    onDismiss: () -> Unit,
+    onSave: (Long, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, String) -> Unit
+) {
+    // Pre-populate from record
+    var granularInput by remember { mutableStateOf(if (record.granular > 0.0) record.granular.toString() else "") }
+    var tabletInput by remember { mutableStateOf(if (record.tablet > 0.0) record.tablet.toString() else "") }
+    var hclInput by remember { mutableStateOf(if (record.hcl > 0.0) record.hcl.toString() else "") }
+    var trusiInput by remember { mutableStateOf(if (record.trusi > 0.0) record.trusi.toString() else "") }
+    var sodaAshInput by remember { mutableStateOf(if (record.sodaAsh > 0.0) record.sodaAsh.toString() else "") }
+    var pacInput by remember { mutableStateOf(if (record.pac > 0.0) record.pac.toString() else "") }
+    var tesPhInput by remember { mutableStateOf(if (record.tesPh > 0.0) record.tesPh.toString() else "") }
+    var tesChlorineInput by remember { mutableStateOf(if (record.tesChlorine > 0.0) record.tesChlorine.toString() else "") }
+    var vakumInput by remember { mutableStateOf(record.vakum > 0.0) }
+    var brushingInput by remember { mutableStateOf(record.brushing > 0.0) }
+    var kurasBalancingInput by remember { mutableStateOf(record.kurasBalancing > 0.0) }
+    var checkStatus by remember { mutableStateOf(record.checkStatus) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = AppIcons.Pool, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Edit Catatan")
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                // Type badge
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = record.scheduleType,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Fields based on schedule type
+                when (record.scheduleType) {
+                    ScheduleType.MONITORING -> MonitoringFields(
+                        granularInput, { granularInput = it },
+                        tabletInput, { tabletInput = it },
+                        hclInput, { hclInput = it },
+                        trusiInput, { trusiInput = it },
+                        sodaAshInput, { sodaAshInput = it },
+                        pacInput, { pacInput = it },
+                        tesPhInput, { tesPhInput = it },
+                        tesChlorineInput, { tesChlorineInput = it }
+                    )
+                    ScheduleType.TREATMENT_MINGGUAN -> TreatmentMingguanFields(
+                        vakumInput, { vakumInput = it },
+                        brushingInput, { brushingInput = it }
+                    )
+                    ScheduleType.DEEP_TREATMENT -> DeepTreatmentFields(
+                        kurasBalancingInput, { kurasBalancingInput = it }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onSave(
+                    record.id,
+                    granularInput.toDoubleOrNull() ?: 0.0,
+                    tabletInput.toDoubleOrNull() ?: 0.0,
+                    hclInput.toDoubleOrNull() ?: 0.0,
+                    trusiInput.toDoubleOrNull() ?: 0.0,
+                    sodaAshInput.toDoubleOrNull() ?: 0.0,
+                    pacInput.toDoubleOrNull() ?: 0.0,
+                    tesPhInput.toDoubleOrNull() ?: 0.0,
+                    tesChlorineInput.toDoubleOrNull() ?: 0.0,
+                    if (vakumInput) 1.0 else 0.0,
+                    if (brushingInput) 1.0 else 0.0,
+                    if (kurasBalancingInput) 1.0 else 0.0,
+                    checkStatus
+                )
+            }) {
+                Text(stringResource(R.string.save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Batal") }
+        }
+    )
+}
+
 // ========== Monitoring fields ==========
 @Composable
 fun MonitoringFields(
@@ -929,7 +1089,8 @@ fun ScheduleItem(
 fun ScheduleRecordItem(
     record: MaintenanceRecord,
     dateFormatter: SimpleDateFormat,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
@@ -955,6 +1116,12 @@ fun ScheduleRecordItem(
                     if (record.isCompleted) {
                         Text(text = "\u2713", style = MaterialTheme.typography.labelSmall, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.width(4.dp))
+                    }
+                    TextButton(
+                        onClick = onEdit,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Text("Edit", style = MaterialTheme.typography.labelSmall)
                     }
                     IconButton(onClick = onDelete, modifier = Modifier.size(20.dp)) {
                         Icon(imageVector = AppIcons.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))

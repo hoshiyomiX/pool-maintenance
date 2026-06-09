@@ -164,12 +164,72 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Open the edit dialog for a record — loads the associated schedule if available.
+     */
+    fun openEditRecord(record: MaintenanceRecord) {
+        viewModelScope.launch {
+            val schedule = if (record.scheduleId > 0) {
+                repository.getScheduleById(record.scheduleId)
+            } else null
+            _uiState.value = _uiState.value.copy(
+                editingSchedule = schedule,
+                editingRecord = record,
+                showEditDialog = true
+            )
+        }
+    }
+
     fun dismissEditDialog() {
         _uiState.value = _uiState.value.copy(
             editingSchedule = null,
             editingRecord = null,
             showEditDialog = false
         )
+    }
+
+    /**
+     * Edit a standalone record — updates only the record data (no schedule metadata).
+     */
+    fun editRecord(
+        recordId: Long,
+        granular: Double,
+        tablet: Double,
+        hcl: Double,
+        trusi: Double,
+        sodaAsh: Double,
+        pac: Double,
+        tesPh: Double,
+        tesChlorine: Double,
+        vakum: Double,
+        brushing: Double,
+        kurasBalancing: Double,
+        checkStatus: String
+    ) {
+        viewModelScope.launch {
+            repository.updateRecordData(
+                recordId,
+                granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine,
+                vakum, brushing, kurasBalancing, checkStatus
+            )
+            // Refresh data
+            val currentVilla = _uiState.value.selectedVilla
+            if (currentVilla != null) {
+                val updatedRecords = repository.getRecordsForVilla(currentVilla)
+                _uiState.value = _uiState.value.copy(
+                    existingRecords = updatedRecords,
+                    editingSchedule = null,
+                    editingRecord = null,
+                    showEditDialog = false
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    editingSchedule = null,
+                    editingRecord = null,
+                    showEditDialog = false
+                )
+            }
+        }
     }
 
     /**
