@@ -3,7 +3,6 @@ package com.poolmaintenance.app.ui.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.poolmaintenance.app.data.MaintenanceRecord
-import com.poolmaintenance.app.data.RecurrenceRule
 import com.poolmaintenance.app.data.Schedule
 import com.poolmaintenance.app.data.VillaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,7 +17,11 @@ data class VillaMapUiState(
     val showDialog: Boolean = false,
     val existingRecords: List<MaintenanceRecord> = emptyList(),
     val existingSchedules: List<Schedule> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    // Edit schedule state
+    val editingSchedule: Schedule? = null,
+    val editingRecord: MaintenanceRecord? = null,
+    val showEditDialog: Boolean = false
 )
 
 @HiltViewModel
@@ -51,7 +54,10 @@ class MapViewModel @Inject constructor(
             showDialog = false,
             selectedVilla = null,
             existingRecords = emptyList(),
-            existingSchedules = emptyList()
+            existingSchedules = emptyList(),
+            editingSchedule = null,
+            editingRecord = null,
+            showEditDialog = false
         )
     }
 
@@ -144,13 +150,86 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun editScheduleTime(scheduleId: Long, hour: Int, minute: Int) {
+    /**
+     * Open the edit dialog for a schedule — loads the latest record for the schedule.
+     */
+    fun openEditSchedule(schedule: Schedule) {
         viewModelScope.launch {
-            repository.updateScheduleTime(scheduleId, hour, minute)
+            val latestRecord = repository.getLatestRecordForSchedule(schedule.id)
+            _uiState.value = _uiState.value.copy(
+                editingSchedule = schedule,
+                editingRecord = latestRecord,
+                showEditDialog = true
+            )
+        }
+    }
+
+    fun dismissEditDialog() {
+        _uiState.value = _uiState.value.copy(
+            editingSchedule = null,
+            editingRecord = null,
+            showEditDialog = false
+        )
+    }
+
+    /**
+     * Edit a schedule — updates schedule metadata (startDate, time) and latest record data.
+     * If startDate changed, recalculate nextDueDate.
+     */
+    fun editSchedule(
+        scheduleId: Long,
+        startDate: Long,
+        scheduledHour: Int,
+        scheduledMinute: Int,
+        granular: Double,
+        tablet: Double,
+        hcl: Double,
+        trusi: Double,
+        sodaAsh: Double,
+        pac: Double,
+        tesPh: Double,
+        tesChlorine: Double,
+        vakum: Double,
+        brushing: Double,
+        kurasBalancing: Double,
+        checkStatus: String
+    ) {
+        viewModelScope.launch {
+            val schedule = repository.getScheduleById(scheduleId) ?: return@launch
+            val recurrenceRule = schedule.recurrenceRule
+            val nextDueDate = repository.calculateNextDueDate(startDate, recurrenceRule)
+
+            // Update schedule metadata
+            repository.updateSchedule(scheduleId, startDate, nextDueDate, scheduledHour, scheduledMinute)
+
+            // Update latest record data if exists
+            val recordId = _uiState.value.editingRecord?.id
+            if (recordId != null && recordId > 0) {
+                repository.updateRecordData(
+                    recordId,
+                    granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine,
+                    vakum, brushing, kurasBalancing, checkStatus
+                )
+            }
+
+            // Refresh data
             val currentVilla = _uiState.value.selectedVilla
             if (currentVilla != null) {
+                val updatedRecords = repository.getRecordsForVilla(currentVilla)
                 val updatedSchedules = repository.getSchedulesForVilla(currentVilla)
-                _uiState.value = _uiState.value.copy(existingSchedules = updatedSchedules)
+                _uiState.value = _uiState.value.copy(
+                    existingRecords = updatedRecords,
+                    existingSchedules = updatedSchedules,
+                    editingSchedule = null,
+                    editingRecord = null,
+                    showEditDialog = false
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    editingSchedule = null,
+                    editingRecord = null,
+                    showEditDialog = false
+                )
             }
         }
     }

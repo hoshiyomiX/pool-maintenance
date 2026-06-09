@@ -38,6 +38,11 @@ interface ScheduleDao {
     """)
     suspend fun updateScheduleTime(id: Long, hour: Int, minute: Int)
 
+    @Query("""
+        UPDATE schedules SET startDate = :startDate, nextDueDate = :nextDueDate, scheduledHour = :hour, scheduledMinute = :minute WHERE id = :id
+    """)
+    suspend fun updateSchedule(id: Long, startDate: Long, nextDueDate: Long, hour: Int, minute: Int)
+
     @Query("UPDATE schedules SET isActive = 0 WHERE id = :id")
     suspend fun deactivateSchedule(id: Long)
 

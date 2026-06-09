@@ -154,7 +154,19 @@ fun MapScreen(
             },
             onDeleteRecord = { id -> viewModel.deleteRecord(id) },
             onDeleteSchedule = { id -> viewModel.deleteSchedule(id) },
-            onEditScheduleTime = { id, hour, minute -> viewModel.editScheduleTime(id, hour, minute) }
+            onEditSchedule = { schedule -> viewModel.openEditSchedule(schedule) }
+        )
+    }
+
+    // Edit schedule dialog — all input fields
+    if (uiState.showEditDialog && uiState.editingSchedule != null) {
+        EditScheduleDialog(
+            schedule = uiState.editingSchedule!!,
+            record = uiState.editingRecord,
+            onDismiss = { viewModel.dismissEditDialog() },
+            onSave = { scheduleId, startDate, hour, minute, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status ->
+                viewModel.editSchedule(scheduleId, startDate, hour, minute, granular, tablet, hcl, trusi, sodaAsh, pac, tesPh, tesChlorine, vakum, brushing, kurasBalancing, status)
+            }
         )
     }
 }
@@ -275,7 +287,7 @@ fun ScheduleDialog(
     onSchedule: (Int, Long, String, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, String, Int, Int) -> Unit,
     onDeleteRecord: (Long) -> Unit,
     onDeleteSchedule: (Long) -> Unit,
-    onEditScheduleTime: (Long, Int, Int) -> Unit
+    onEditSchedule: (Schedule) -> Unit
 ) {
     val context = LocalContext.current
     var selectedScheduleType by remember { mutableStateOf<String?>(null) }
@@ -301,7 +313,6 @@ fun ScheduleDialog(
     var selectedMinute by remember { mutableStateOf(0) }
     var showTimePicker by remember { mutableStateOf(false) }
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")) }
-    val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale("id", "ID")) }
 
     val recurrenceLabel = when (selectedScheduleType) {
         ScheduleType.MONITORING -> "Tiap 4 hari"
@@ -454,7 +465,7 @@ fun ScheduleDialog(
                                 schedule = schedule,
                                 dateFormatter = dateFormatter,
                                 onDelete = { onDeleteSchedule(schedule.id) },
-                                onEditTime = { hour, minute -> onEditScheduleTime(schedule.id, hour, minute) }
+                                onEdit = { onEditSchedule(schedule) }
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -514,6 +525,183 @@ fun ScheduleDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Tutup") }
+        }
+    )
+
+    // Date picker
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { selectedDate = it }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // Time picker for Monitoring
+    if (showTimePicker) {
+        TimePickerDialog(
+            context,
+            { _, hour, minute ->
+                selectedHour = hour
+                selectedMinute = minute
+                showTimePicker = false
+            },
+            selectedHour,
+            selectedMinute,
+            true
+        ).show()
+    }
+}
+
+// ========== Edit Schedule Dialog — all input fields ==========
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditScheduleDialog(
+    schedule: Schedule,
+    record: MaintenanceRecord?,
+    onDismiss: () -> Unit,
+    onSave: (Long, Long, Int, Int, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, Double, String) -> Unit
+) {
+    val context = LocalContext.current
+    val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")) }
+
+    var selectedDate by remember { mutableStateOf(schedule.startDate) }
+    var selectedHour by remember { mutableStateOf(schedule.scheduledHour.coerceAtLeast(0)) }
+    var selectedMinute by remember { mutableStateOf(schedule.scheduledMinute.coerceAtLeast(0)) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    // Pre-populate from latest record if available
+    var granularInput by remember { mutableStateOf(if (record != null && record.granular > 0.0) record.granular.toString() else "") }
+    var tabletInput by remember { mutableStateOf(if (record != null && record.tablet > 0.0) record.tablet.toString() else "") }
+    var hclInput by remember { mutableStateOf(if (record != null && record.hcl > 0.0) record.hcl.toString() else "") }
+    var trusiInput by remember { mutableStateOf(if (record != null && record.trusi > 0.0) record.trusi.toString() else "") }
+    var sodaAshInput by remember { mutableStateOf(if (record != null && record.sodaAsh > 0.0) record.sodaAsh.toString() else "") }
+    var pacInput by remember { mutableStateOf(if (record != null && record.pac > 0.0) record.pac.toString() else "") }
+    var tesPhInput by remember { mutableStateOf(if (record != null && record.tesPh > 0.0) record.tesPh.toString() else "") }
+    var tesChlorineInput by remember { mutableStateOf(if (record != null && record.tesChlorine > 0.0) record.tesChlorine.toString() else "") }
+    var vakumInput by remember { mutableStateOf(record != null && record.vakum > 0.0) }
+    var brushingInput by remember { mutableStateOf(record != null && record.brushing > 0.0) }
+    var kurasBalancingInput by remember { mutableStateOf(record != null && record.kurasBalancing > 0.0) }
+    var checkStatus by remember { mutableStateOf(record?.checkStatus ?: "Sudah Dicek") }
+
+    val recLabel = when (schedule.recurrenceRule) {
+        RecurrenceRule.EVERY_4_DAYS -> "Tiap 4 hari"
+        RecurrenceRule.WEEKLY -> "Seminggu sekali"
+        RecurrenceRule.MONTHLY -> "Tiap bulan"
+        else -> schedule.recurrenceRule
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = AppIcons.Pool, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Edit Jadwal")
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                // Type badge + recurrence label
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            text = schedule.scheduleType,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = recLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // DATE PICKER
+                TextButton(onClick = { showDatePicker = true }) {
+                    Text("Jadwal: ${dateFormatter.format(Date(selectedDate))}")
+                }
+
+                // TIME PICKER — only for Monitoring
+                if (schedule.scheduleType == ScheduleType.MONITORING) {
+                    TextButton(onClick = { showTimePicker = true }) {
+                        Text("Waktu: ${String.format("%02d:%02d", selectedHour, selectedMinute)}")
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Fields based on schedule type
+                when (schedule.scheduleType) {
+                    ScheduleType.MONITORING -> MonitoringFields(
+                        granularInput, { granularInput = it },
+                        tabletInput, { tabletInput = it },
+                        hclInput, { hclInput = it },
+                        trusiInput, { trusiInput = it },
+                        sodaAshInput, { sodaAshInput = it },
+                        pacInput, { pacInput = it },
+                        tesPhInput, { tesPhInput = it },
+                        tesChlorineInput, { tesChlorineInput = it }
+                    )
+                    ScheduleType.TREATMENT_MINGGUAN -> TreatmentMingguanFields(
+                        vakumInput, { vakumInput = it },
+                        brushingInput, { brushingInput = it }
+                    )
+                    ScheduleType.DEEP_TREATMENT -> DeepTreatmentFields(
+                        kurasBalancingInput, { kurasBalancingInput = it }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onSave(
+                    schedule.id,
+                    selectedDate,
+                    if (schedule.scheduleType == ScheduleType.MONITORING) selectedHour else -1,
+                    if (schedule.scheduleType == ScheduleType.MONITORING) selectedMinute else -1,
+                    granularInput.toDoubleOrNull() ?: 0.0,
+                    tabletInput.toDoubleOrNull() ?: 0.0,
+                    hclInput.toDoubleOrNull() ?: 0.0,
+                    trusiInput.toDoubleOrNull() ?: 0.0,
+                    sodaAshInput.toDoubleOrNull() ?: 0.0,
+                    pacInput.toDoubleOrNull() ?: 0.0,
+                    tesPhInput.toDoubleOrNull() ?: 0.0,
+                    tesChlorineInput.toDoubleOrNull() ?: 0.0,
+                    if (vakumInput) 1.0 else 0.0,
+                    if (brushingInput) 1.0 else 0.0,
+                    if (kurasBalancingInput) 1.0 else 0.0,
+                    checkStatus
+                )
+            }) {
+                Text(stringResource(R.string.save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Batal") }
         }
     )
 
@@ -614,15 +802,14 @@ fun DeepTreatmentFields(
     }
 }
 
-// ========== Schedule item with edit time + delete ==========
+// ========== Schedule item with edit + delete ==========
 @Composable
 fun ScheduleItem(
     schedule: Schedule,
     dateFormatter: SimpleDateFormat,
     onDelete: () -> Unit,
-    onEditTime: (Int, Int) -> Unit
+    onEdit: () -> Unit
 ) {
-    val context = LocalContext.current
     val recLabel = when (schedule.recurrenceRule) {
         RecurrenceRule.EVERY_4_DAYS -> "Tiap 4 hari"
         RecurrenceRule.WEEKLY -> "Mingguan"
@@ -671,37 +858,16 @@ fun ScheduleItem(
                         text = "Waktu: $timeLabel",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable {
-                            // Open time picker to edit
-                            TimePickerDialog(
-                                context,
-                                { _, hour, minute -> onEditTime(hour, minute) },
-                                schedule.scheduledHour.coerceAtLeast(0),
-                                schedule.scheduledMinute.coerceAtLeast(0),
-                                true
-                            ).show()
-                        }
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
             Row {
-                // Edit time button for Monitoring
-                if (schedule.scheduleType == ScheduleType.MONITORING) {
-                    TextButton(
-                        onClick = {
-                            TimePickerDialog(
-                                context,
-                                { _, hour, minute -> onEditTime(hour, minute) },
-                                schedule.scheduledHour.coerceAtLeast(0),
-                                schedule.scheduledMinute.coerceAtLeast(0),
-                                true
-                            ).show()
-                        },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Text("Edit", style = MaterialTheme.typography.labelSmall)
-                    }
+                TextButton(
+                    onClick = onEdit,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Text("Edit", style = MaterialTheme.typography.labelSmall)
                 }
                 IconButton(onClick = onDelete, modifier = Modifier.size(20.dp)) {
                     Icon(imageVector = AppIcons.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))

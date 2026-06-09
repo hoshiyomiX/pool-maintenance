@@ -86,6 +86,10 @@ class VillaRepository @Inject constructor(
         villaDao.deleteRecord(id)
     }
 
+    suspend fun getLatestRecordForSchedule(scheduleId: Long): MaintenanceRecord? {
+        return villaDao.getLatestRecordForSchedule(scheduleId)
+    }
+
     // ── Schedule operations ────────────────────────────────────
 
     suspend fun insertSchedule(schedule: Schedule): Long {
@@ -119,6 +123,10 @@ class VillaRepository @Inject constructor(
 
     suspend fun updateScheduleTime(id: Long, hour: Int, minute: Int) {
         scheduleDao.updateScheduleTime(id, hour, minute)
+    }
+
+    suspend fun updateSchedule(id: Long, startDate: Long, nextDueDate: Long, hour: Int, minute: Int) {
+        scheduleDao.updateSchedule(id, startDate, nextDueDate, hour, minute)
     }
 
     suspend fun deactivateSchedule(id: Long) {
