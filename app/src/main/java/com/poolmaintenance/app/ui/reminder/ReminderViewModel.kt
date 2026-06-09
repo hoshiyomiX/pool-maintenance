@@ -37,6 +37,8 @@ class ReminderViewModel @Inject constructor(
     fun loadTodayReminders() {
         _uiState.value = _uiState.value.copy(isLoading = true)
         viewModelScope.launch {
+            // Ensure records exist for all due schedules today
+            repository.ensureTodayRecords()
             val reminders = repository.getTodayReminders()
             val completed = reminders.count { it.isCompleted }
             val pending = reminders.count { !it.isCompleted }

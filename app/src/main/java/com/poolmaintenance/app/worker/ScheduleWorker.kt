@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.poolmaintenance.app.data.MaintenanceRecord
 import com.poolmaintenance.app.data.ScheduleType
 import com.poolmaintenance.app.data.VillaRepository
 import com.poolmaintenance.app.notification.NotificationHelper
@@ -13,15 +12,14 @@ import dagger.assisted.AssistedInject
 import java.util.Calendar
 
 /**
- * WorkManager worker that runs daily to check for due schedules.
- * For each due schedule:
- * 1. Create a new MaintenanceRecord (empty data, isCompleted = false)
- * 2. Update the schedule's nextDueDate
- * 3. Send a push notification
+ * WorkManager worker that runs periodically to process due schedules.
  *
- * For Monitoring schedules with a set time, the notification is triggered
- * only when the current hour matches the scheduled time.
- * For other types, notifications are sent on the daily check.
+ * Flow:
+ * 1. ensureTodayRecords() — create missing MaintenanceRecords for due schedules
+ *    and advance nextDueDate (idempotent — won't duplicate records)
+ * 2. Send push notifications for today's records at the scheduled time
+ *    - Monitoring: only at the set hour
+ *    - Treatment Mingguan & Deep Treatment: on daily check
  */
 @HiltWorker
 class ScheduleWorker @AssistedInject constructor(
@@ -32,16 +30,19 @@ class ScheduleWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         return try {
-            val dueSchedules = repository.getDueSchedules()
+            // Step 1: Ensure records exist for all due schedules (idempotent)
+            repository.ensureTodayRecords()
+
+            // Step 2: Send notifications for today's reminders
+            val todayReminders = repository.getTodayReminders()
             val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
 
-            for (schedule in dueSchedules) {
-                // For Monitoring with a set time: only notify at the scheduled hour
-                // For other types: always notify on the daily check
-                val shouldNotify = when (schedule.scheduleType) {
+            for (record in todayReminders) {
+                val shouldNotify = when (record.scheduleType) {
                     ScheduleType.MONITORING -> {
-                        if (schedule.scheduledHour >= 0) {
-                            // Only notify if current hour matches scheduled hour (within 1-hour window)
+                        // Find the schedule to check scheduled time
+                        val schedule = repository.getScheduleById(record.scheduleId)
+                        if (schedule != null && schedule.scheduledHour >= 0) {
                             currentHour == schedule.scheduledHour
                         } else {
                             true // No time set, notify on daily check
@@ -50,30 +51,12 @@ class ScheduleWorker @AssistedInject constructor(
                     else -> true // Treatment Mingguan & Deep Treatment always notify
                 }
 
-                // Always create the record regardless of notification timing
-                val record = MaintenanceRecord(
-                    villaNumber = schedule.villaNumber,
-                    date = System.currentTimeMillis(),
-                    scheduledDate = schedule.nextDueDate,
-                    scheduleType = schedule.scheduleType,
-                    scheduleId = schedule.id,
-                    checkStatus = "Belum Dicek",
-                    isCompleted = false
-                )
-
-                val recordId = repository.insertRecord(record)
-
-                // Calculate and update next due date
-                val nextDue = repository.calculateNextDueDate(schedule.nextDueDate, schedule.recurrenceRule)
-                repository.updateNextDueDate(schedule.id, nextDue)
-
-                // Send notification only if time matches
                 if (shouldNotify) {
                     NotificationHelper.showScheduleNotification(
                         applicationContext,
-                        schedule.villaNumber,
-                        schedule.scheduleType,
-                        recordId
+                        record.villaNumber,
+                        record.scheduleType,
+                        record.id
                     )
                 }
             }

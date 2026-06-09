@@ -90,6 +90,43 @@ class VillaRepository @Inject constructor(
         return villaDao.getLatestRecordForSchedule(scheduleId)
     }
 
+    /**
+     * Ensure MaintenanceRecords exist for all due schedules today.
+     * For each active schedule whose nextDueDate falls within today:
+     * - Check if a record already exists for this schedule today
+     * - If not, create one (empty data, isCompleted = false)
+     * - Advance the schedule's nextDueDate to the next recurrence
+     *
+     * This is called when Tab 1 loads to guarantee schedules appear
+     * even if the ScheduleWorker hasn't run yet.
+     * Idempotent — safe to call multiple times per day.
+     */
+    suspend fun ensureTodayRecords() {
+        val dueSchedules = getDueSchedules()
+        val (startOfDay, endOfDay) = getTodayRange()
+
+        for (schedule in dueSchedules) {
+            val existingCount = villaDao.countRecordsForScheduleToday(schedule.id, startOfDay, endOfDay)
+            if (existingCount == 0) {
+                // No record for this schedule today — create one
+                val record = MaintenanceRecord(
+                    villaNumber = schedule.villaNumber,
+                    date = System.currentTimeMillis(),
+                    scheduledDate = schedule.nextDueDate,
+                    scheduleType = schedule.scheduleType,
+                    scheduleId = schedule.id,
+                    checkStatus = "Belum Dicek",
+                    isCompleted = false
+                )
+                insertRecord(record)
+
+                // Advance the schedule to next due date
+                val nextDue = calculateNextDueDate(schedule.nextDueDate, schedule.recurrenceRule)
+                updateNextDueDate(schedule.id, nextDue)
+            }
+        }
+    }
+
     // ── Schedule operations ────────────────────────────────────
 
     suspend fun insertSchedule(schedule: Schedule): Long {

@@ -132,6 +132,12 @@ interface VillaDao {
     """)
     suspend fun getLatestRecordForSchedule(scheduleId: Long): MaintenanceRecord?
 
+    @Query("""
+        SELECT COUNT(*) FROM maintenance_records
+        WHERE scheduleId = :scheduleId AND scheduledDate >= :startOfDay AND scheduledDate < :endOfDay
+    """)
+    suspend fun countRecordsForScheduleToday(scheduleId: Long, startOfDay: Long, endOfDay: Long): Int
+
     @Query("DELETE FROM maintenance_records WHERE id = :id")
     suspend fun deleteRecord(id: Long)
 }
